@@ -2101,6 +2101,55 @@
         });
       },
 
+      gasSilent: function (funcName) {
+        const args = Array.prototype.slice.call(arguments, 1);
+        return new Promise(function (resolve, reject) {
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            var runner = google.script.run
+              .withSuccessHandler(function (res) { resolve(res); })
+              .withFailureHandler(function (err) { reject(err); });
+            runner[funcName].apply(runner, args);
+          } else if (app.GAS_WEBAPP_URL) {
+            var payload = { funcName: funcName, args: args };
+            fetch(app.GAS_WEBAPP_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload)
+            })
+              .then(function (response) { return response.text(); })
+              .then(function (txt) {
+                try { return JSON.parse(txt); } catch (e) { return null; }
+              })
+              .then(function (res) {
+                if (res && res.status === 'error') reject(new Error(res.message || 'Error'));
+                else if (res && res.hasOwnProperty('result')) resolve(res.result);
+                else if (res !== null) resolve(res);
+                else app._fallbackGasLocal(funcName, args, resolve);
+              })
+              .catch(function () { app._fallbackGasLocal(funcName, args, resolve); });
+          } else {
+            app._fallbackGasLocal(funcName, args, resolve);
+          }
+        });
+      },
+
+      preloadAllData: async function () {
+        if (!app.GAS_WEBAPP_URL) return;
+        try {
+          var tables = ['Murid', 'Users', 'Settings', 'Program', 'Jadwal', 'Jurnal', 'Laporan', 'Rencana'];
+          var promises = tables.map(function (t) {
+            return app.gasSilent('getTableData', t).then(function (res) {
+              if (t === 'Settings') {
+                if (res && Array.isArray(res) && res.length > 0) app.state.db.Settings = res[0];
+              } else if (res && Array.isArray(res)) {
+                app.state.db[t] = res;
+              }
+            }).catch(function () { });
+          });
+          await Promise.all(promises);
+        } catch (e) { }
+      },
+
       _fallbackGasLocal: function (funcName, args, resolve) {
         setTimeout(function () {
           document.getElementById('global-loading').classList.add('hidden');
@@ -2532,33 +2581,17 @@
         });
 
 
-        // ── Load Settings ──
-        try {
-          var dbS = await app.gas('getTableData', 'Settings');
-          app.state.db.Settings = (dbS && dbS.length > 0)
-            ? dbS[0]
-            : {
-              id: '1', sekolah: '', kepsek: '', kota: '', tahun: '2023/2024',
-              semester: 'Ganjil', provinsi: '', dinas: '', alamat: '{}',
-              email: '', web: '', logoKiri: '', logoKanan: ''
-            };
-        } catch (e) {
-          app.state.db.Settings = { id: '1', alamat: '{}' };
+        // ── Load data real dari GAS WebApp secara paralel (senyap & cepat) ──
+        if (app.GAS_WEBAPP_URL) {
+          await app.preloadAllData();
         }
 
-
-        // ── Load data real dari GAS WebApp (atau seed demo jika offline) ──
-        if (app.GAS_WEBAPP_URL) {
-          try {
-            var dbM = await app.gas('getTableData', 'Murid');
-            if (dbM && Array.isArray(dbM) && dbM.length > 0) {
-              app.state.db.Murid = dbM;
-            }
-            var dbU = await app.gas('getTableData', 'Users');
-            if (dbU && Array.isArray(dbU) && dbU.length > 0) {
-              app.state.db.Users = dbU;
-            }
-          } catch (e) { }
+        if (!app.state.db.Settings) {
+          app.state.db.Settings = {
+            id: '1', sekolah: '', kepsek: '', kota: '', tahun: '2023/2024',
+            semester: 'Ganjil', provinsi: '', dinas: '', alamat: '{}',
+            email: '', web: '', logoKiri: '', logoKanan: ''
+          };
         }
 
         if (!app.state.db.Users.length) {
@@ -2880,7 +2913,7 @@
       },
 
       // ── Navigasi ──────────────────────────────────────────────
-      nav: async function (section) {
+      nav: function (section) {
         var titles = {
           identitas: 'Isi Identitas Anda',
           datamurid: 'Manajemen Data Murid',
@@ -2894,20 +2927,15 @@
           users: 'Manajemen Akun Guru'
         };
 
-
+        // Ganti tampilan tab secara LANGSUNG (0 ms delay)
         document.querySelectorAll('.section-content').forEach(function (el) {
           el.classList.add('hidden');
         });
         var sec = document.getElementById('sec-' + section);
         if (sec) sec.classList.remove('hidden');
 
-
         document.getElementById('page-title').innerText = titles[section] || section;
 
-
-
-
-        // Aktifkan tombol nav
         document.querySelectorAll('.nav-btn').forEach(function (b) {
           b.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
           b.classList.add('text-slate-300');
@@ -2918,19 +2946,8 @@
           activeBtn.classList.remove('text-slate-300');
         }
 
-
-        // Muat data master jika belum ada
-        if (!app.state.db.Murid.length)
-          app.state.db.Murid = await app.gas('getTableData', 'Murid');
-        if (!app.state.db.Users.length)
-          app.state.db.Users = await app.gas('getTableData', 'Users');
-
-
-        // Per-halaman
+        // Tampilkan data langsung dari memori lokal (instant)
         if (section === 'identitas') {
-          // FIX 11: pastikan Settings sudah di-reload agar data terkini
-          var dbS = await app.gas('getTableData', 'Settings');
-          if (dbS && dbS.length > 0) app.state.db.Settings = dbS[0];
           var s = app.getParsedSettings();
           document.getElementById('id_nama').value = app.state.user.nama || '';
           document.getElementById('id_nip_guru').value = (s.nipGuruMap || {})[app.state.user.username] || '';
@@ -2947,36 +2964,29 @@
           document.getElementById('id_web').value = s.web || '';
           document.getElementById('id_logo_kiri').value = s.logoKiri || '';
           document.getElementById('id_logo_kanan').value = s.logoKanan || '';
-          // Drive ID hanya untuk Admin
           if (app.state.user.role === 'Admin') {
             var driveId = s.driveId || s.driveid || '';
             var driveEl = document.getElementById('id_drive_id');
             if (driveEl) driveEl.value = driveId;
             var drvSec = document.getElementById('drive-settings-section');
             if (drvSec) drvSec.classList.remove('hidden');
-            // Cek status otorisasi Drive secara otomatis
-            app.checkDriveAuth(true); // true = silent (tidak tampilkan toast jika OK)
           }
           app.setIdentitasEditable(false);
         }
-        if (section === 'datamurid') await app.loadMurid();
-        if (section === 'program') await app.loadProgram();
-        if (section === 'users') await app.loadUsers();
-        if (section === 'jadwal') await app.loadJadwal();
-        if (section === 'jurnal') await app.loadJurnal();
-        if (section === 'laporan') await app.loadLaporan();
-        if (section === 'rencana') await app.loadRencana();
+
+        if (section === 'datamurid') app.loadMurid();
+        if (section === 'program') app.loadProgram();
+        if (section === 'users') app.loadUsers();
+        if (section === 'jadwal') app.loadJadwal();
+        if (section === 'jurnal') app.loadJurnal();
+        if (section === 'laporan') app.loadLaporan();
+        if (section === 'rencana') app.loadRencana();
+
         if (['profilmurid', 'laporan', 'rencana', 'cover'].indexOf(section) !== -1) {
-          try {
-            var mData = await app.gas('getTableData', 'Murid');
-            if (mData && Array.isArray(mData) && mData.length > 0) {
-              app.state.db.Murid = mData;
-            }
-          } catch (e) { }
-          await app.populateStudentDropdowns();
+          app.populateStudentDropdowns();
         }
+
         if (section === 'profilmurid') {
-          document.getElementById('form-profilmurid').reset();
           var sel = document.getElementById('pm_selectMurid');
           var container = document.getElementById('pm_select_container');
           if (app.state.user && app.state.user.role === 'Murid' && app.state.user.muridId) {
@@ -2989,10 +2999,18 @@
           } else {
             if (container) container.classList.remove('hidden');
             if (sel) sel.disabled = false;
-            app.loadProfilDetail('');
+            app.loadProfilDetail(sel ? sel.value : '');
           }
         }
 
+        // Lakukan pembaruan background secara senyap (tidak mengunci UI)
+        app.gasSilent('getTableData', 'Murid').then(function (mRes) {
+          if (mRes && Array.isArray(mRes) && mRes.length > 0) {
+            app.state.db.Murid = mRes;
+            if (section === 'datamurid') app.loadMurid();
+            if (['profilmurid', 'laporan', 'rencana', 'cover'].indexOf(section) !== -1) app.populateStudentDropdowns();
+          }
+        }).catch(function () { });
 
         // Tutup sidebar di mobile
         if (window.innerWidth < 1024) {
