@@ -4364,25 +4364,35 @@
 
       executeDownloadPDF: function () {
         var element = document.getElementById('preview-paper');
-        var temp = document.createElement('div');
-        temp.style.cssText = 'position:absolute;top:0;left:0;width:210mm;z-index:-9999;background:white;';
-        var clone = element.cloneNode(true);
-        clone.style.cssText = 'padding:0;box-shadow:none;';
-        temp.appendChild(clone);
-        document.body.appendChild(temp);
-        var safeName = (app.state.currentPrintFilename + '_' + app.state.user.nama).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+        if (!element) return;
+
+        var userNama = (app.state.user && app.state.user.nama) ? app.state.user.nama : 'Dokumen';
+        var safeName = ((app.state.currentPrintFilename || 'Dokumen') + '_' + userNama)
+          .replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+
         var opt = {
-          margin: 0.2,
+          margin: [0.3, 0.3, 0.3, 0.3],
           filename: safeName + '.pdf',
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            windowWidth: 1024
+          },
           jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] }
         };
-        document.getElementById('global-loading').classList.remove('hidden');
-        html2pdf().set(opt).from(temp).save().then(function () {
-          document.body.removeChild(temp);
-          document.getElementById('global-loading').classList.add('hidden');
+
+        var loading = document.getElementById('global-loading');
+        if (loading) loading.classList.remove('hidden');
+
+        html2pdf().set(opt).from(element).save().then(function () {
+          if (loading) loading.classList.add('hidden');
+        }).catch(function (err) {
+          console.warn('Gagal unduh PDF via html2pdf, mengalihkan ke Cetak:', err);
+          if (loading) loading.classList.add('hidden');
+          window.print();
         });
       },
 
