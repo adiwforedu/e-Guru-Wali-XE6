@@ -2659,7 +2659,7 @@
       },
 
 
-      GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycby_7BV1OTD4QNQukEtj4uu6g59sldtIznFURXUctVRaWicRVehieoD4sEA368LLGD22IQ/exec',
+      GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzXhhB4Xoqku9hmpc6c6bwEbSATepA9NCn6vmzIReW55X-cUuYcKxFaC6wPrWmW-TIMlQ/exec',
 
       // ── GAS bridge (dengan HTTP Web App & fallback demo offline) ──────────────
       gas: function (funcName) {
@@ -3237,7 +3237,23 @@
         });
 
 
-        // ── Load data real dari GAS WebApp secara paralel (senyap & cepat) ──
+        // ── 1. Restorasi Sesi Aktif & Tab Aktif secara INSTAN (0 ms) ──
+        var saved = localStorage.getItem('activeUser');
+        if (saved) {
+          try {
+            app.state.user = JSON.parse(saved);
+            app._showApp();
+            var savedTab = localStorage.getItem('activeTab');
+            var defaultTab = (app.state.user.role === 'Sekretaris') ? 'presensi' :
+                             ((app.state.user.role === 'Murid') ? 'profilmurid' : 'identitas');
+            app.nav(savedTab || defaultTab);
+          } catch (e) {
+            localStorage.removeItem('activeUser');
+            localStorage.removeItem('activeTab');
+          }
+        }
+
+        // ── 2. Load data real dari GAS WebApp secara paralel (senyap di background) ──
         if (app.GAS_WEBAPP_URL) {
           await app.preloadAllData();
         }
@@ -3256,25 +3272,6 @@
             { id: '2', nama: 'Budi Santoso, S.Pd', username: 'guru', password: '123', role: 'Guru' },
             { id: '3', nama: 'Sekretaris XE6', username: 'sekretaris', password: 'sekretaris123', role: 'Sekretaris' }
           ];
-        }
-
-
-        // ── Cek sesi tersimpan ──
-        var saved = localStorage.getItem('activeUser');
-        if (saved) {
-          try {
-            app.state.user = JSON.parse(saved);
-            app._showApp();
-            if (app.state.user.role === 'Sekretaris') {
-              app.nav('presensi');
-            } else if (app.state.user.role === 'Murid') {
-              app.nav('profilmurid');
-            } else {
-              app.nav('identitas');
-            }
-          } catch (e) {
-            localStorage.removeItem('activeUser');
-          }
         }
       },
 
@@ -3450,6 +3447,7 @@
               throw new Error('Username dan Password wajib diisi.');
             }
 
+            app._loadUsersCache();
             try {
               var liveUsers = await app.gas('getTableData', 'Users');
               if (liveUsers && Array.isArray(liveUsers) && liveUsers.length > 0) {
@@ -3460,6 +3458,7 @@
                   if (idx > -1) app.state.db.Users[idx] = uRec;
                   else app.state.db.Users.push(uRec);
                 });
+                app._saveUsersCache();
               }
             } catch (e) { }
 
@@ -3518,6 +3517,7 @@
 
         app.state.user = null;
         localStorage.removeItem('activeUser');
+        localStorage.removeItem('activeTab');
         if (document.getElementById('loginUsername')) document.getElementById('loginUsername').value = '';
         if (document.getElementById('loginPassword')) document.getElementById('loginPassword').value = '';
         if (document.getElementById('loginNisn')) document.getElementById('loginNisn').value = '';
@@ -3667,6 +3667,33 @@
           if (viewRekap) viewRekap.classList.remove('hidden');
           app.loadPresensiRekapView();
         }
+      },
+
+      _saveUsersCache: function () {
+        try {
+          if (Array.isArray(app.state.db.Users) && app.state.db.Users.length > 0) {
+            localStorage.setItem('users_db_cache', JSON.stringify(app.state.db.Users));
+          }
+        } catch (e) { }
+      },
+
+      _loadUsersCache: function () {
+        try {
+          var c = localStorage.getItem('users_db_cache');
+          if (c) {
+            var parsed = JSON.parse(c);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              if (!Array.isArray(app.state.db.Users)) app.state.db.Users = [];
+              parsed.forEach(function (rec) {
+                var idx = app.state.db.Users.findIndex(function (x) {
+                  return app.compareId(x.id, rec.id) || (x.username || '').toLowerCase() === (rec.username || '').toLowerCase();
+                });
+                if (idx > -1) app.state.db.Users[idx] = rec;
+                else app.state.db.Users.push(rec);
+              });
+            }
+          }
+        } catch (e) { }
       },
 
       _savePresensiCache: function () {
@@ -4414,6 +4441,7 @@
 
       // ── Navigasi ──────────────────────────────────────────────
       nav: function (section) {
+        if (section) localStorage.setItem('activeTab', section);
         var titles = {
           identitas: 'Isi Identitas Anda',
           datamurid: 'Manajemen Data Murid',
@@ -5714,6 +5742,7 @@
 
         try {
           await app.gasSilent('saveRecord', table, obj);
+          if (table === 'Users') app._saveUsersCache();
           app.toast('Data Presensi/Record Tersimpan!');
           app.closeModal();
           // Refresh tabel yang sesuai
@@ -5735,6 +5764,10 @@
           app._savePresensiCache();
           app.toast('Data Presensi Berhasil Dihapus!');
           app.loadPresensiRekapView();
+        }
+        if (table === 'Users') {
+          app.state.db.Users = (app.state.db.Users || []).filter(function (x) { return !app.compareId(x.id, id); });
+          app._saveUsersCache();
         }
         try {
           await app.gasSilent('deleteRecord', table, id);
