@@ -7,14 +7,38 @@
     (function () {
       try {
         var u = localStorage.getItem('activeUser');
-        if (!u && window.name) {
+        var activeTab = localStorage.getItem('activeTab');
+        if ((!u || u === 'null' || u === 'undefined') && typeof sessionStorage !== 'undefined') {
+          try {
+            u = sessionStorage.getItem('activeUser');
+            activeTab = sessionStorage.getItem('activeTab') || activeTab;
+          } catch (ex) { console.warn('SessionStorage early session parse failed:', ex); }
+        }
+        if ((!u || u === 'null' || u === 'undefined') && window.name) {
           try {
             var w = JSON.parse(window.name);
-            if (w && w.activeUser) u = JSON.stringify(w.activeUser);
-          } catch (ex) {}
+            if (w && w.activeUser) {
+              u = JSON.stringify(w.activeUser);
+              activeTab = w.activeTab || activeTab;
+            }
+          } catch (ex) { console.warn('Early session parse failed:', ex); }
         }
         if (u && u !== 'null' && u !== 'undefined') {
-          document.write('<style id="early-session-style">#login-screen{display:none !important;}#app-container{display:flex !important;}</style>');
+          try {
+            var parsed = JSON.parse(u);
+            if (parsed && parsed.role) {
+              document.write('<style id="early-session-style">#login-screen{display:none !important;}#app-container{display:flex !important;}</style>');
+            } else {
+              localStorage.removeItem('activeUser');
+              localStorage.removeItem('activeTab');
+              window.name = '';
+            }
+          } catch (ex) {
+            console.warn('Early session parse failed:', ex);
+            localStorage.removeItem('activeUser');
+            localStorage.removeItem('activeTab');
+            window.name = '';
+          }
         }
       } catch (e) { }
     })();
@@ -1286,6 +1310,24 @@
                     <i class="fas fa-globe"></i> Semua Tanggal (Riwayat Total)
                   </button>
                 </div>
+              </div>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button type="button" id="btn-delete-day" onclick="app.deletePresensiRange('day')"
+                  class="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold hover:bg-red-100 shadow-sm">
+                  <i class="fas fa-trash-alt"></i> Hapus Semua Hari Ini
+                </button>
+                <button type="button" id="btn-delete-week" onclick="app.deletePresensiRange('week')"
+                  class="px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg font-bold hover:bg-orange-100 shadow-sm">
+                  <i class="fas fa-trash-alt"></i> Hapus Semua Minggu Ini
+                </button>
+                <button type="button" id="btn-delete-month" onclick="app.deletePresensiRange('month')"
+                  class="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold hover:bg-amber-100 shadow-sm">
+                  <i class="fas fa-trash-alt"></i> Hapus Semua Bulan Ini
+                </button>
+                <button type="button" id="btn-delete-custom" onclick="app.deletePresensiRange('custom')"
+                  class="px-3 py-1.5 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-bold hover:bg-slate-100 shadow-sm">
+                  <i class="fas fa-trash-alt"></i> Hapus Semua Hasil Filter
+                </button>
               </div>
             </div>
 
@@ -2675,7 +2717,7 @@
       },
 
 
-      GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbzXhhB4Xoqku9hmpc6c6bwEbSATepA9NCn6vmzIReW55X-cUuYcKxFaC6wPrWmW-TIMlQ/exec',
+      GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycby_7BV1OTD4QNQukEtj4uu6g59sldtIznFURXUctVRaWicRVehieoD4sEA368LLGD22IQ/exec',
 
       // ── GAS bridge (dengan HTTP Web App & fallback demo offline) ──────────────
       gas: function (funcName) {
@@ -2758,8 +2800,13 @@
                 try { return JSON.parse(txt); } catch (e) { return null; }
               })
               .then(function (res) {
-                if (res && res.status === 'error') reject(new Error(res.message || 'Error'));
-                else if (res && res.hasOwnProperty('result')) resolve(res.result);
+                if (res && res.status === 'error') {
+                  var errMsg = res.message || 'Error';
+                  if (funcName === 'deletePresensiByDateRange' && errMsg.toLowerCase().includes('tidak ditemukan')) {
+                    return app._fallbackGasLocal(funcName, args, resolve);
+                  }
+                  reject(new Error(errMsg));
+                } else if (res && res.hasOwnProperty('result')) resolve(res.result);
                 else if (res !== null) resolve(res);
                 else app._fallbackGasLocal(funcName, args, resolve);
               })
@@ -2868,6 +2915,21 @@
               else app.state.db.Presensi.push(rec);
             });
             resolve(true);
+          } else if (funcName === 'deletePresensiByDateRange') {
+            var startDate = args[0] || '';
+            var endDate = args[1] || '';
+            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+            var deletedCount = 0;
+            app.state.db.Presensi = app.state.db.Presensi.filter(function (p) {
+              var pDate = (p.tanggal || '').toString().trim();
+              if (!pDate) return true;
+              if (startDate && pDate < startDate) return true;
+              if (endDate && pDate > endDate) return true;
+              deletedCount += 1;
+              return false;
+            });
+            app._savePresensiCache();
+            resolve({ success:true, deletedCount: deletedCount });
           } else {
             resolve(null);
           }
@@ -3072,13 +3134,22 @@
           if (app.state.db.Settings && typeof app.state.db.Settings === 'object') {
             localStorage.setItem('settings_db_cache', JSON.stringify(app.state.db.Settings));
           }
-        } catch (e) { }
+        } catch (e) {
+          try {
+            if (typeof sessionStorage !== 'undefined' && app.state.db.Settings && typeof app.state.db.Settings === 'object') {
+              sessionStorage.setItem('settings_db_cache', JSON.stringify(app.state.db.Settings));
+            }
+          } catch (e2) { }
+        }
       },
 
       _loadSettingsCache: function () {
         try {
           if (!app.state.db.Settings) {
             var c = localStorage.getItem('settings_db_cache');
+            if ((!c || c === 'null') && typeof sessionStorage !== 'undefined') {
+              try { c = sessionStorage.getItem('settings_db_cache'); } catch (ex) { }
+            }
             if (c) {
               var parsed = JSON.parse(c);
               if (parsed && typeof parsed === 'object') {
@@ -3086,7 +3157,19 @@
               }
             }
           }
-        } catch (e) { }
+        } catch (e) {
+          try {
+            if (typeof sessionStorage !== 'undefined' && !app.state.db.Settings) {
+              var c2 = sessionStorage.getItem('settings_db_cache');
+              if (c2) {
+                var parsed2 = JSON.parse(c2);
+                if (parsed2 && typeof parsed2 === 'object') {
+                  app.state.db.Settings = parsed2;
+                }
+              }
+            }
+          } catch (e2) { }
+        }
       },
 
       // FIX 3: getParsedSettings — parsing alamat JSON yang lebih robust
@@ -3231,7 +3314,12 @@
         };
         Object.keys(formSubmitMap).forEach(function (fId) {
           var tbl = formSubmitMap[fId];
-          document.getElementById(fId).addEventListener('submit', function (e) {
+          var formEl = document.getElementById(fId);
+          if (!formEl) {
+            console.warn('Missing form element for init:', fId);
+            return;
+          }
+          formEl.addEventListener('submit', function (e) {
             e.preventDefault();
             app.saveData(tbl);
           });
@@ -3294,50 +3382,29 @@
         app._loadUsersCache();
         app._loadMuridCache();
         app._loadPresensiCache();
+        app._loadAppStateCache();
 
         // ── 1. Restorasi Sesi Aktif & Tab Aktif secara INSTAN (0 ms) ──
-        var saved = null;
-        var savedTab = null;
-        try {
-          saved = localStorage.getItem('activeUser');
-          savedTab = localStorage.getItem('activeTab');
-        } catch (e) {
-          console.warn('LocalStorage error:', e);
-        }
-
-        if (!saved && window.name) {
+        var restored = app._restoreActiveUser();
+        if (restored) {
           try {
-            var wParsed = JSON.parse(window.name);
-            if (wParsed && wParsed.activeUser) {
-              saved = JSON.stringify(wParsed.activeUser);
-              savedTab = wParsed.activeTab || null;
-            }
-          } catch (e) {}
-        }
-
-        if (saved) {
-          var userParsed = null;
-          try {
-            userParsed = JSON.parse(saved);
-          } catch (eParse) {
-            console.error('ActiveUser JSON corrupted, removing:', eParse);
-            try {
-              localStorage.removeItem('activeUser');
-              localStorage.removeItem('activeTab');
-              window.name = '';
-            } catch (ex) {}
+            app._showApp();
+            app.nav(restored.activeTab || restored.defaultTab);
+          } catch (errNav) {
+            console.error('Error during view restoration (session preserved):', errNav);
           }
-
-          if (userParsed && userParsed.role) {
-            app.state.user = userParsed;
-            try {
-              app._showApp();
-              var defaultTab = (app.state.user.role === 'Sekretaris') ? 'presensi' :
-                               ((app.state.user.role === 'Murid') ? 'profilmurid' : 'identitas');
-              app.nav(savedTab || defaultTab);
-            } catch (errNav) {
-              console.error('Error during view restoration (session preserved):', errNav);
-            }
+        } else {
+          var earlyStyle = document.getElementById('early-session-style');
+          if (earlyStyle) earlyStyle.remove();
+          var loginScreen = document.getElementById('login-screen');
+          if (loginScreen) {
+            loginScreen.classList.remove('hidden');
+            loginScreen.style.display = 'flex';
+          }
+          var appContainer = document.getElementById('app-container');
+          if (appContainer) {
+            appContainer.classList.add('hidden');
+            appContainer.style.display = 'none';
           }
         }
 
@@ -3345,6 +3412,20 @@
         if (app.GAS_WEBAPP_URL) {
           await app.preloadAllData();
         }
+
+        app.startPresensiRealtimeSync();
+
+        // Attach explicit listeners for bulk-delete buttons to ensure clicks are handled
+        try {
+          var bDay = document.getElementById('btn-delete-day');
+          if (bDay) bDay.addEventListener('click', function (e) { console.debug('btn-delete-day clicked'); app.deletePresensiRange('day'); });
+          var bWeek = document.getElementById('btn-delete-week');
+          if (bWeek) bWeek.addEventListener('click', function (e) { console.debug('btn-delete-week clicked'); app.deletePresensiRange('week'); });
+          var bMonth = document.getElementById('btn-delete-month');
+          if (bMonth) bMonth.addEventListener('click', function (e) { console.debug('btn-delete-month clicked'); app.deletePresensiRange('month'); });
+          var bCustom = document.getElementById('btn-delete-custom');
+          if (bCustom) bCustom.addEventListener('click', function (e) { console.debug('btn-delete-custom clicked'); app.deletePresensiRange('custom'); });
+        } catch (e) { console.warn('Failed to bind bulk-delete listeners:', e); }
 
         if (!app.state.db.Settings) {
           app.state.db.Settings = {
@@ -3377,6 +3458,120 @@
 
 
       // FIX 10: pisahkan logika tampil app ke method tersendiri
+      _saveActiveUserSession: function (user, activeTab) {
+        if (!user || !user.role) return;
+        try { localStorage.setItem('activeUser', JSON.stringify(user)); } catch (e) {}
+        try { localStorage.setItem('activeTab', activeTab || 'identitas'); } catch (e) {}
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('activeUser', JSON.stringify(user));
+            sessionStorage.setItem('activeTab', activeTab || 'identitas');
+          }
+        } catch (e) {}
+        try {
+          window.name = JSON.stringify({
+            activeUser: user,
+            activeTab: activeTab || 'identitas'
+          });
+        } catch (e) {}
+        app._saveAppStateCache();
+      },
+
+      _getSavedActiveUserSession: function () {
+        var saved = null;
+        var savedTab = null;
+        try {
+          saved = localStorage.getItem('activeUser');
+          savedTab = localStorage.getItem('activeTab');
+        } catch (e) {
+          console.warn('LocalStorage error:', e);
+        }
+
+        if ((!saved || saved === 'null' || saved === 'undefined') && typeof sessionStorage !== 'undefined') {
+          try {
+            saved = sessionStorage.getItem('activeUser');
+            savedTab = sessionStorage.getItem('activeTab') || savedTab;
+          } catch (e) {
+            console.warn('SessionStorage error:', e);
+          }
+        }
+
+        if ((!saved || saved === 'null' || saved === 'undefined') && window.name) {
+          try {
+            var wParsed = JSON.parse(window.name);
+            if (wParsed && wParsed.activeUser) {
+              saved = JSON.stringify(wParsed.activeUser);
+              savedTab = wParsed.activeTab || savedTab;
+            }
+          } catch (e) { console.warn('Window.name session parse failed:', e); }
+        }
+
+        if (!saved || saved === 'null' || saved === 'undefined') return null;
+
+        try {
+          var userParsed = JSON.parse(saved);
+          if (userParsed && userParsed.role) {
+            return { user: userParsed, activeTab: savedTab };
+          }
+        } catch (eParse) {
+          console.error('Saved activeUser invalid, clearing persisted session:', eParse);
+          try {
+            localStorage.removeItem('activeUser');
+            localStorage.removeItem('activeTab');
+          } catch (ex) {}
+          try { window.name = ''; } catch (ex) {}
+        }
+        return null;
+      },
+
+      _restoreActiveUser: function () {
+        var session = app._getSavedActiveUserSession();
+        if (!session) return null;
+
+        app.state.user = session.user;
+        if (!app.state.db.Settings && session.settings) {
+          app.state.db.Settings = session.settings;
+        }
+        var defaultTab = (app.state.user.role === 'Sekretaris') ? 'presensi' :
+                         ((app.state.user.role === 'Murid') ? 'profilmurid' : 'identitas');
+        return { activeTab: session.activeTab, defaultTab: defaultTab };
+      },
+
+      _saveAppStateCache: function () {
+        try {
+          var session = {
+            activeUser: app.state.user || null,
+            activeTab: localStorage.getItem('activeTab') || 'identitas',
+            settings: app.state.db.Settings || null
+          };
+          localStorage.setItem('app_saved_session', JSON.stringify(session));
+        } catch (e) { console.warn('Failed to save app session cache:', e); }
+      },
+
+      _loadAppStateCache: function () {
+        try {
+          var c = localStorage.getItem('app_saved_session');
+          if (!c) return;
+          var parsed = JSON.parse(c);
+          if (!parsed || typeof parsed !== 'object') return;
+
+          if (!app.state.db.Settings && parsed.settings) {
+            app.state.db.Settings = parsed.settings;
+          }
+          if (!app.state.user && parsed.activeUser) {
+            app.state.user = parsed.activeUser;
+          }
+          if (parsed.activeTab) {
+            try { localStorage.setItem('activeTab', parsed.activeTab); } catch (e) {}
+          }
+          if (parsed.activeUser) {
+            try { localStorage.setItem('activeUser', JSON.stringify(parsed.activeUser)); } catch (e) {}
+          }
+        } catch (e) {
+          console.warn('Failed to load app session cache:', e);
+        }
+      },
+
       _showApp: function () {
         // Sembunyikan login screen
         var loginScreen = document.getElementById('login-screen');
@@ -3551,7 +3746,7 @@
             };
 
             app.state.user = userObj;
-            try { localStorage.setItem('activeUser', JSON.stringify(userObj)); } catch (e) {}
+            app._saveActiveUserSession(userObj, 'profilmurid');
             app._showApp();
             app.nav('profilmurid');
             app.toast('Login Berhasil! Selamat datang, ' + foundMurid.nama);
@@ -3617,13 +3812,7 @@
 
             if (found) {
               app.state.user = found;
-              try { localStorage.setItem('activeUser', JSON.stringify(found)); } catch (e) {}
-              try {
-                window.name = JSON.stringify({
-                  activeUser: found,
-                  activeTab: (found.role === 'Sekretaris' ? 'presensi' : (found.role === 'Murid' ? 'profilmurid' : 'identitas'))
-                });
-              } catch (e) {}
+              app._saveActiveUserSession(found, found.role === 'Sekretaris' ? 'presensi' : (found.role === 'Murid' ? 'profilmurid' : 'identitas'));
               app._showApp();
               if (found.role === 'Sekretaris') {
                 app.nav('presensi');
@@ -3661,6 +3850,12 @@
         try {
           localStorage.removeItem('activeUser');
           localStorage.removeItem('activeTab');
+          localStorage.removeItem('app_saved_session');
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.removeItem('activeUser');
+            sessionStorage.removeItem('activeTab');
+            sessionStorage.removeItem('settings_db_cache');
+          }
         } catch (e) {}
         try { window.name = ''; } catch (e) {}
 
@@ -3750,6 +3945,7 @@
           wObj.activeUser = updatedUser;
           window.name = JSON.stringify(wObj);
         } catch (e) {}
+        app._saveAppStateCache();
 
         var sbName = document.getElementById('sb-user-name');
         if (sbName) sbName.innerText = namaBaru;
@@ -3803,6 +3999,7 @@
       // ── PRESENSI & REKAPITULASI MURID ─────────────────────────
       _presensiCharts: { pie: null, bar: null },
       activePresensiSubTab: 'input',
+      _skipNextPresensiRekapSync: false,
 
       switchPresensiSubTab: function (tab) {
         app.activePresensiSubTab = tab;
@@ -3881,20 +4078,45 @@
         } catch (e) { }
       },
 
-      loadPresensi: async function () {
-        app._loadPresensiCache();
+      syncPresensiStateFromServer: async function (options) {
+        options = options || {};
         try {
           var liveData = await app.gasSilent('getTableData', 'Presensi');
-          if (liveData && Array.isArray(liveData) && liveData.length > 0) {
-            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
-            liveData.forEach(function (rec) {
-              var idx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
-              if (idx > -1) app.state.db.Presensi[idx] = rec;
-              else app.state.db.Presensi.push(rec);
+          if (Array.isArray(liveData)) {
+            app.state.db.Presensi = liveData.filter(function (rec) {
+              return rec && typeof rec === 'object';
             });
             app._savePresensiCache();
           }
-        } catch (e) { }
+        } catch (e) {
+          if (!options.silent) console.warn('Gagal sinkronisasi presensi:', e);
+        }
+        return Array.isArray(app.state.db.Presensi) ? app.state.db.Presensi : [];
+      },
+
+      startPresensiRealtimeSync: function () {
+        if (app._presensiRealtimeTimer) clearInterval(app._presensiRealtimeTimer);
+        app._presensiRealtimeTimer = setInterval(function () {
+          try {
+            if (!app.state.user) return;
+            var secPresensi = document.getElementById('sec-presensi');
+            if (secPresensi && secPresensi.classList.contains('hidden')) return;
+            app.syncPresensiStateFromServer({ silent:true }).then(function () {
+              if (app.activePresensiSubTab === 'rekap') {
+                app.loadPresensiRekapView();
+              } else if (app.activePresensiSubTab === 'input') {
+                app.loadPresensiInputTable();
+              } else {
+                app.loadPresensiMuridView();
+              }
+            });
+          } catch (e) { }
+        }, 8000);
+      },
+
+      loadPresensi: async function () {
+        app._loadPresensiCache();
+        await app.syncPresensiStateFromServer({ silent:true });
 
         var datePicker = document.getElementById('presensi-date-picker');
         if (datePicker && !datePicker.value) {
@@ -3951,6 +4173,7 @@
 
       loadPresensiInputTable: async function () {
         app._loadMuridCache();
+        await app.syncPresensiStateFromServer({ silent:true });
         try {
           if (!app.state.db.Murid || app.state.db.Murid.length === 0) {
             var liveMurids = await app.gasSilent('getTableData', 'Murid');
@@ -4150,6 +4373,14 @@
         var records = [];
         var curUser = app.state.user ? app.state.user.username : 'admin';
         var curUserRole = app.state.user ? app.state.user.role : 'Guru';
+        var existingMap = {};
+        var presensiList = app.state.db.Presensi || [];
+
+        presensiList.forEach(function (p) {
+          if ((p.tanggal || '').trim() === dateVal) {
+            existingMap[(p.siswaId || p.siswaid || '').toString().replace(/^'/, '')] = p;
+          }
+        });
 
         rows.forEach(function (row) {
           var studentId = row.id.replace('p-row-', '');
@@ -4158,14 +4389,15 @@
           var checkedRadio = row.querySelector('input[type="radio"]:checked');
           var statusVal = checkedRadio ? checkedRadio.value : 'H';
 
-          var ketInput = document.getElementById('ket_izin_' + studentId);
+          var ketInput = row.querySelector('#ket_izin_' + studentId) || document.getElementById('ket_izin_' + studentId);
           var ketVal = (statusVal === 'I' && ketInput) ? ketInput.value.trim() : '';
 
-          var existing = (app.state.db.Presensi || []).find(function (p) {
-            return (p.tanggal || '').trim() === dateVal && app.compareId(p.siswaId || p.siswaid, studentId);
-          });
-
+          var existing = existingMap[studentId];
           var pId = existing ? existing.id : ('P_' + dateVal.replace(/-/g, '') + '_' + studentId);
+
+          if (existing && existing.status === statusVal && (existing.keterangan || '').trim() === ketVal) {
+            return;
+          }
 
           records.push({
             id: pId,
@@ -4178,6 +4410,11 @@
             inputBy: app.state.user ? app.state.user.nama + ' (' + curUserRole + ')' : curUser
           });
         });
+
+        if (!records.length) {
+          app.toast('Tidak ada perubahan data presensi untuk disimpan.', 'info');
+          return;
+        }
 
         // ── Update DB Lokal Instan ──
         if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
@@ -4192,27 +4429,17 @@
         var loadingEl = document.getElementById('global-loading');
         var loadingText = loadingEl ? loadingEl.querySelector('span') : null;
         if (loadingEl) {
-          if (loadingText) loadingText.innerText = 'MENYIMPAN PRESENSI HARIAN (' + records.length + ' MURID)...';
+          if (loadingText) loadingText.innerText = 'MENYIMPAN PRESENSI LOKAL (' + records.length + ' MURID)...';
           loadingEl.classList.remove('hidden');
         }
 
-        // Disable tombol selama sinkronisasi
+        // Disable tombol selama update lokal cepat
         var btns = document.querySelectorAll('#presensi-view-input button');
         btns.forEach(function (b) { b.disabled = true; });
 
         try {
-          // 1 Request Batch sekaligus (super cepat & hemat jaringan)
-          var res = await app.gasSilent('savePresensiBatchServer', records);
-          if (!res) {
-            // Fallback paralel simultan jika batch server belum ter-deploy
-            await Promise.all(records.map(function (rec) {
-              return app.gasSilent('saveRecord', 'Presensi', rec);
-            }));
-          }
-          app.toast('Presensi harian tanggal ' + dateVal + ' (' + records.length + ' murid) berhasil disimpan!');
-        } catch (err) {
-          console.warn('Gagal sinkronisasi presensi ke server:', err);
-          app.toast('Presensi disimpan secara lokal.');
+          await Promise.resolve();
+          app.toast('Presensi tanggal ' + dateVal + ' berhasil disimpan lokal. Sinkronisasi server berjalan di latar belakang.', 'success');
         } finally {
           if (loadingEl) {
             if (loadingText) loadingText.innerText = 'MEMPROSES DATA...';
@@ -4220,6 +4447,22 @@
           }
           btns.forEach(function (b) { b.disabled = false; });
         }
+
+        // Sinkronisasi server di background tanpa menunggu pengguna.
+        (async function () {
+          try {
+            var res = await app.gasSilent('savePresensiBatchServer', records);
+            if (!res) {
+              await Promise.all(records.map(function (rec) {
+                return app.gasSilent('saveRecord', 'Presensi', rec);
+              }));
+            }
+            app.toast('Sinkronisasi presensi ke server selesai.');
+          } catch (err) {
+            console.warn('Gagal sinkronisasi presensi ke server:', err);
+            app.toast('Presensi disimpan lokal. Sinkronisasi server gagal.', 'warning');
+          }
+        })();
       },
 
       setRekapDateFilter: function (preset) {
@@ -4244,18 +4487,12 @@
         app.loadPresensiRekapView();
       },
 
-      loadPresensiRekapView: async function () {
-        try {
-          var liveData = await app.gasSilent('getTableData', 'Presensi');
-          if (liveData && Array.isArray(liveData) && liveData.length > 0) {
-            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
-            liveData.forEach(function (rec) {
-              var idx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
-              if (idx > -1) app.state.db.Presensi[idx] = rec;
-              else app.state.db.Presensi.push(rec);
-            });
-          }
-        } catch (e) { }
+      loadPresensiRekapView: async function (options) {
+        options = options || {};
+        if (!options.skipSync && !app._skipNextPresensiRekapSync) {
+          await app.syncPresensiStateFromServer({ silent:true });
+        }
+        app._skipNextPresensiRekapSync = false;
 
         // Set default filter tanggal ke Hari Ini jika pertama kali dibuka
         var dStartEl = document.getElementById('filter-rekap-date-start');
@@ -4390,6 +4627,134 @@
         }
 
         app.renderPresensiCharts(totalH, totalS, totalI, totalA);
+      },
+
+      deletePresensiRange: async function (preset) {
+        console.debug('deletePresensiRange invoked, preset=', preset);
+        var today = new Date();
+        function fmtDate(d) {
+          var y = d.getFullYear();
+          var m = String(d.getMonth() + 1).padStart(2, '0');
+          var day = String(d.getDate()).padStart(2, '0');
+          return y + '-' + m + '-' + day;
+        }
+
+        var startDate = '';
+        var endDate = '';
+        if (preset === 'day') {
+          startDate = fmtDate(today);
+          endDate = fmtDate(today);
+        } else if (preset === 'week') {
+          var startOfWeek = new Date(today);
+          var day = today.getDay() || 7;
+          startOfWeek.setDate(today.getDate() - day + 1);
+          var endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          startDate = fmtDate(startOfWeek);
+          endDate = fmtDate(endOfWeek);
+        } else if (preset === 'month') {
+          var startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          var endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          startDate = fmtDate(startOfMonth);
+          endDate = fmtDate(endOfMonth);
+        } else {
+          var dStartEl = document.getElementById('filter-rekap-date-start');
+          var dEndEl = document.getElementById('filter-rekap-date-end');
+          startDate = dStartEl ? dStartEl.value : '';
+          endDate = dEndEl ? dEndEl.value : '';
+          if (!startDate && !endDate) {
+            startDate = fmtDate(today);
+            endDate = fmtDate(today);
+          }
+        }
+
+        if (!startDate && !endDate) return app.toast('Pilih rentang tanggal atau gunakan preset hari/minggu/bulan.', 'warning');
+        if (!confirm('Hapus semua data presensi pada rentang ' + startDate + ' s/d ' + endDate + '?')) return;
+
+        var deletedCount = 0;
+        app.state.db.Presensi = (app.state.db.Presensi || []).filter(function (p) {
+          var pDate = (p.tanggal || '').toString().trim();
+          if (!pDate) return true;
+          if (startDate && pDate < startDate) return true;
+          if (endDate && pDate > endDate) return true;
+          deletedCount += 1;
+          return false;
+        });
+        if (deletedCount === 0) {
+          app.toast('Tidak ada data presensi yang cocok untuk rentang ini.', 'warning');
+          return;
+        }
+        app._savePresensiCache();
+        app._skipNextPresensiRekapSync = true;
+        app.toast('Berhasil menghapus ' + deletedCount + ' entri presensi secara lokal. Sinkronisasi server berjalan di latar belakang.', 'success');
+        if (app.activePresensiSubTab === 'rekap') {
+          app.loadPresensiRekapView({ skipSync: true });
+        } else {
+          app.loadPresensiInputTable();
+        }
+
+        (async function () {
+          try {
+            var result = await app.gasSilent('deletePresensiByDateRange', startDate, endDate);
+            if (result && result.success) {
+              app.toast('Sinkronisasi penghapusan massal ke server selesai.');
+            } else {
+              console.warn('deletePresensiByDateRange failed, using fallback:', result);
+              await app.deletePresensiRangeFallback(startDate, endDate);
+            }
+          } catch (err) {
+            var errMsg = (err && err.message) ? err.message : String(err || 'Kesalahan tidak diketahui');
+            if (errMsg.toLowerCase().includes('tidak ditemukan')) {
+              await app.deletePresensiRangeFallback(startDate, endDate);
+            } else {
+              console.warn('deletePresensiByDateRange exception:', err);
+              app.toast('Sinkronisasi penghapusan massal gagal: ' + errMsg, 'warning');
+            }
+          }
+        })();
+      },
+
+      deletePresensiRangeFallback: async function (startDate, endDate) {
+        try {
+          var all = await app.gasSilent('getTableData', 'Presensi');
+          if (!Array.isArray(all) || all.length === 0) {
+            app.toast('Tidak ada data presensi untuk dihapus.', 'warning');
+            return;
+          }
+
+          var idsToDelete = all.filter(function (p) {
+            var pDate = (p.tanggal || '').toString().trim();
+            if (!pDate) return false;
+            if (startDate && pDate < startDate) return false;
+            if (endDate && pDate > endDate) return false;
+            return true;
+          }).map(function (p) { return p.id; }).filter(Boolean);
+
+          if (idsToDelete.length === 0) {
+            app.toast('Tidak ada data presensi yang cocok untuk rentang ini.', 'warning');
+            return;
+          }
+
+          await Promise.all(idsToDelete.map(function (id) {
+            return app.gasSilent('deleteRecord', 'Presensi', id);
+          }));
+
+          app.state.db.Presensi = (app.state.db.Presensi || []).filter(function (p) {
+            var pDate = (p.tanggal || '').toString().trim();
+            return !(pDate >= startDate && pDate <= endDate);
+          });
+          app._savePresensiCache();
+          app._skipNextPresensiRekapSync = true;
+          app.toast('Berhasil menghapus ' + idsToDelete.length + ' entri presensi (fallback).', 'success');
+          if (app.activePresensiSubTab === 'rekap') {
+            app.loadPresensiRekapView({ skipSync: true });
+          } else {
+            app.loadPresensiInputTable();
+          }
+        } catch (fallbackErr) {
+          console.error('deletePresensiRangeFallback error:', fallbackErr);
+          app.toast('Gagal menghapus data presensi fallback: ' + ((fallbackErr && fallbackErr.message) || fallbackErr), 'error');
+        }
       },
 
       quickUpdatePresensiStatus: async function (id, newStatus) {
