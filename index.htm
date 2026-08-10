@@ -12,6 +12,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -562,7 +563,7 @@
 
   <!-- ── Loading overlay ──────────────────────────────────────── -->
   <div id="global-loading"
-    class="fixed inset-0 z-[100] bg-white bg-opacity-90 flex flex-col items-center justify-center hidden">
+    class="fixed inset-0 z-[100] bg-white bg-opacity-90 flex flex-col items-center justify-center hidden pointer-events-none">
     <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mb-4"></div>
     <span class="text-primary font-bold tracking-wider">MEMPROSES DATA...</span>
   </div>
@@ -579,7 +580,7 @@
   <!-- ════════════════════════════════════════════════════════════
      LOGIN SCREEN
 ════════════════════════════════════════════════════════════ -->
-  <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-100">
+  <div id="login-screen" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-100">
     <div class="bg-white lg:bg-transparent lg:shadow-2xl rounded-none lg:rounded-2xl
               w-full h-full lg:h-[650px] lg:max-w-5xl flex flex-col lg:flex-row overflow-hidden">
 
@@ -611,14 +612,18 @@
 
 
           <!-- Role selector tabs -->
-          <div class="flex bg-slate-100 p-1 rounded-xl mb-6 border border-slate-200">
+          <div class="flex bg-slate-100 p-1.5 rounded-xl mb-4 border border-slate-200 gap-1.5 shadow-inner">
             <button type="button" id="tab-login-guru" onclick="app.setLoginRole('guru')"
-              class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all bg-white text-primary shadow-sm flex items-center justify-center gap-2">
-              <i class="fas fa-chalkboard-teacher text-sm"></i> Guru / Wali Kelas
+              class="flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-blue-600 text-white shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fas fa-chalkboard-teacher text-xs sm:text-sm"></i> Guru / Wali
+            </button>
+            <button type="button" id="tab-login-sekretaris" onclick="app.setLoginRole('sekretaris')"
+              class="flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fas fa-user-edit text-xs sm:text-sm text-emerald-600"></i> Sekretaris
             </button>
             <button type="button" id="tab-login-murid" onclick="app.setLoginRole('murid')"
-              class="flex-1 py-2.5 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2">
-              <i class="fas fa-user-graduate text-sm"></i> Murid
+              class="flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fas fa-user-graduate text-xs sm:text-sm text-purple-600"></i> Murid
             </button>
           </div>
 
@@ -627,28 +632,28 @@
           </div>
 
           <form id="login-form" class="space-y-6">
-            <!-- Form Guru / Admin -->
+            <!-- Form Guru / Admin / Sekretaris -->
             <div id="form-login-guru-fields" class="space-y-6">
               <div>
-                <label class="block text-slate-700 font-bold mb-2 text-xs uppercase tracking-wider">Username</label>
+                <label id="login-uname-label" class="block text-slate-700 font-bold mb-2 text-xs uppercase tracking-wider">USERNAME</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-user text-slate-400"></i>
                   </div>
                   <input type="text" id="loginUsername" autocomplete="username"
                     class="input-solid pl-11 py-3.5 text-base rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:border-primary"
-                    placeholder="Ketik username Anda">
+                    placeholder="Username">
                 </div>
               </div>
               <div>
-                <label class="block text-slate-700 font-bold mb-2 text-xs uppercase tracking-wider">Password</label>
+                <label class="block text-slate-700 font-bold mb-2 text-xs uppercase tracking-wider">PASSWORD</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <i class="fas fa-lock text-slate-400"></i>
                   </div>
                   <input type="password" id="loginPassword" autocomplete="current-password"
                     class="input-solid pl-11 py-3.5 text-base rounded-lg bg-slate-50 border-slate-200 focus:bg-white focus:border-primary"
-                    placeholder="Ketik password Anda">
+                    placeholder="Password">
                 </div>
               </div>
             </div>
@@ -769,6 +774,10 @@
         class="nav-btn w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors hover:bg-slate-800 font-medium">
         <i class="fas fa-users w-6 text-slate-400"></i> Data Murid
       </button>
+      <button onclick="app.nav('presensi')" id="nav-presensi"
+        class="nav-btn w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors hover:bg-slate-800 font-medium">
+        <i class="fas fa-clipboard-user w-6 text-emerald-400"></i> Presensi Murid
+      </button>
       <button onclick="app.nav('profilmurid')" id="nav-profilmurid"
         class="nav-btn w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors hover:bg-slate-800 font-medium">
         <i class="fas fa-user-edit w-6 text-slate-400"></i> Profil Murid
@@ -844,6 +853,11 @@
         </button>
         <h1 id="page-title" class="text-xl font-bold text-slate-800 uppercase tracking-tight">Judul Halaman</h1>
       </div>
+      <div class="flex items-center gap-2">
+        <button onclick="app.logout()" class="btn-secondary text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border-slate-300 font-bold text-slate-700 flex items-center gap-1.5 shadow-sm">
+          <i class="fas fa-right-from-bracket text-red-600"></i> Keluar / Ganti Role
+        </button>
+      </div>
     </header>
 
 
@@ -875,7 +889,7 @@
               </div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1 text-xs uppercase">Tahun Ajaran Aktif</label>
-                <input type="text" id="id_tahun" class="input-solid" placeholder="2023/2024">
+                <input type="text" id="id_tahun" class="input-solid" placeholder="2026/2027" value="2026/2027">
               </div>
               <div>
                 <label class="block font-bold text-slate-700 mb-1 text-xs uppercase">Semester Berjalan</label>
@@ -1091,6 +1105,344 @@
               <tbody id="table-murid" class="bg-white divide-y divide-slate-100"></tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+
+      <!-- ════ 2.5 PRESENSI MURID ════ -->
+      <section id="sec-presensi" class="section-content hidden">
+        <div class="card-solid">
+          <!-- Header & Mode Tabs -->
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 gap-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i class="fas fa-clipboard-user text-emerald-600"></i> Presensi &amp; Rekapitulasi Murid
+              </h2>
+              <p class="text-xs text-slate-500 mt-1">Pengelolaan data kehadiran murid harian (H, S, I, A), statistik, dan rekapitulasi.</p>
+            </div>
+            
+            <!-- Tab switcher untuk Guru/Admin/Sekretaris -->
+            <div id="presensi-tab-container" class="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full md:w-auto">
+              <button type="button" id="tab-presensi-sub-input" onclick="app.switchPresensiSubTab('input')"
+                class="flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white text-emerald-700 shadow-sm flex items-center justify-center gap-2">
+                <i class="fas fa-edit"></i> Input Presensi Harian
+              </button>
+              <button type="button" id="tab-presensi-sub-rekap" onclick="app.switchPresensiSubTab('rekap')"
+                class="flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2">
+                <i class="fas fa-chart-pie"></i> Rekapitulasi &amp; Analytics
+              </button>
+            </div>
+          </div>
+
+          <!-- ── SUB-TAB 1: INPUT PRESENSI HARIAN ── -->
+          <div id="presensi-view-input" class="space-y-5">
+            <!-- Filter Bar Input -->
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-3 flex-1">
+                <div>
+                  <label class="block text-[11px] font-bold text-emerald-900 mb-1 uppercase tracking-wider">
+                    <i class="fas fa-calendar-alt text-emerald-600 mr-1"></i> Tanggal Presensi *
+                  </label>
+                  <input type="date" id="presensi-date-picker" onchange="app.loadPresensiInputTable()"
+                    class="input-solid bg-white font-bold text-slate-800 border-emerald-300 shadow-sm">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-emerald-900 mb-1 uppercase tracking-wider">
+                    <i class="fas fa-chalkboard text-emerald-600 mr-1"></i> Kelas *
+                  </label>
+                  <select id="presensi-class-picker" onchange="app.loadPresensiInputTable()"
+                    class="input-solid bg-white font-bold text-emerald-900 border-emerald-300 shadow-sm w-36">
+                    <option value="XE6">XE6 (Default)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Quick Action & Counters -->
+              <div class="flex flex-wrap items-center justify-end gap-2">
+                <button type="button" onclick="app.markAllPresensi('H')"
+                  class="btn-secondary text-xs bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-100 font-bold shadow-sm py-2.5">
+                  <i class="fas fa-check-double text-emerald-600"></i> Tandai Semua Hadir (H)
+                </button>
+                <button type="button" onclick="app.savePresensiBatch()"
+                  class="btn-primary text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md py-2.5 px-5">
+                  <i class="fas fa-save"></i> Simpan Presensi Harian
+                </button>
+              </div>
+            </div>
+
+            <!-- Summary Chips / Counters -->
+            <div id="presensi-counter-chips" class="flex flex-wrap gap-3 text-xs">
+              <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Hadir (H): <b id="count-chip-h">0</b>
+              </span>
+              <span class="bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Sakit (S): <b id="count-chip-s">0</b>
+              </span>
+              <span class="bg-blue-100 text-blue-800 border border-blue-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Izin (I): <b id="count-chip-i">0</b>
+              </span>
+              <span class="bg-red-100 text-red-800 border border-red-300 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 shadow-sm">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Alfa (A): <b id="count-chip-a">0</b>
+              </span>
+              <span class="bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg font-bold ml-auto flex items-center gap-1.5">
+                Total Murid: <b id="count-chip-total">0</b>
+              </span>
+            </div>
+
+            <!-- Lock Notice Banner jika Tanggal Lalu & Sekretaris -->
+            <div id="presensi-lock-banner" class="hidden bg-amber-50 border border-amber-300 text-amber-800 p-3.5 rounded-xl text-xs flex items-center gap-2">
+              <i class="fas fa-lock text-amber-600 text-base"></i>
+              <span><b>Mode Terkunci (Read-Only):</b> Presensi tanggal yang telah berlalu hanya dapat diubah/direvisi oleh <b>Guru Wali</b>.</span>
+            </div>
+
+            <!-- Tabel Input Presensi -->
+            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700 text-xs uppercase font-bold border-b border-slate-200">
+                  <tr>
+                    <th class="p-3 text-center w-12">No</th>
+                    <th class="p-3 w-16 text-center">Foto</th>
+                    <th class="p-3">NIS / NISN</th>
+                    <th class="p-3">Nama Lengkap Murid</th>
+                    <th class="p-3 text-center w-64">Status Presensi</th>
+                    <th class="p-3">Keterangan Izin / Catatan Alasan (Opsional)</th>
+                  </tr>
+                </thead>
+                <tbody id="table-presensi-input-body" class="divide-y divide-slate-100 text-sm">
+                  <!-- Diisi dinamis via JavaScript -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex justify-end pt-3">
+              <button type="button" id="btn-save-presensi-batch" onclick="app.savePresensiBatch()"
+                class="btn-primary py-3 px-8 shadow-lg font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-2">
+                <i class="fas fa-save text-lg"></i> SIMPAN SEMUA PRESENSI HARIAN
+              </button>
+            </div>
+          </div>
+
+          <!-- ── SUB-TAB 2: REKAPITULASI & ANALYTICS ── -->
+          <div id="presensi-view-rekap" class="hidden space-y-6">
+            <!-- Filter Bar Rekapitulasi -->
+            <div class="bg-slate-100 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Cari Nama Murid</label>
+                  <input type="text" id="filter-rekap-search" oninput="app.loadPresensiRekapView()" class="input-solid bg-white" placeholder="Ketik nama murid...">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Filter Kategori Status</label>
+                  <select id="filter-rekap-status" onchange="app.loadPresensiRekapView()" class="input-solid bg-white font-semibold">
+                    <option value="">Semua Status (H, S, I, A)</option>
+                    <option value="H">🟢 Hadir (H)</option>
+                    <option value="S">🟡 Sakit (S)</option>
+                    <option value="I">🔵 Izin (I)</option>
+                    <option value="A">🔴 Alfa (A)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+                  <input type="date" id="filter-rekap-date-start" onchange="app.loadPresensiRekapView()" class="input-solid bg-white">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+                  <input type="date" id="filter-rekap-date-end" onchange="app.loadPresensiRekapView()" class="input-solid bg-white">
+                </div>
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="flex flex-wrap items-center justify-between pt-2 border-t border-slate-200 text-xs gap-2">
+                <span class="text-slate-600 font-bold flex items-center gap-1">
+                  <i class="fas fa-filter text-emerald-600"></i> Pilihan Cepat Rentang Waktu:
+                </span>
+                <div class="flex flex-wrap gap-1.5">
+                  <button type="button" onclick="app.setRekapDateFilter('today')"
+                    class="px-3 py-1 bg-white text-emerald-700 border border-emerald-300 rounded-lg font-bold hover:bg-emerald-50 shadow-sm">
+                    <i class="fas fa-calendar-day"></i> Hari Ini (Default)
+                  </button>
+                  <button type="button" onclick="app.setRekapDateFilter('month')"
+                    class="px-3 py-1 bg-white text-blue-700 border border-blue-300 rounded-lg font-bold hover:bg-blue-50 shadow-sm">
+                    <i class="fas fa-calendar-alt"></i> Bulan Ini
+                  </button>
+                  <button type="button" onclick="app.setRekapDateFilter('all')"
+                    class="px-3 py-1 bg-white text-slate-700 border border-slate-300 rounded-lg font-bold hover:bg-slate-50 shadow-sm">
+                    <i class="fas fa-globe"></i> Semua Tanggal (Riwayat Total)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Summary KPI Dashboard -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white p-4 rounded-xl shadow-md">
+                <div class="text-xs uppercase font-bold text-emerald-100">Kehadiran Kelas</div>
+                <div id="kpi-rate" class="text-2xl font-black mt-1">100%</div>
+                <div class="text-[10px] text-emerald-100 mt-0.5">Persentase Hadir Total</div>
+              </div>
+              <div class="bg-white border border-emerald-200 p-4 rounded-xl shadow-sm">
+                <div class="text-xs font-bold text-emerald-700 flex items-center justify-between">
+                  <span>Hadir (H)</span> <i class="fas fa-check-circle text-emerald-500"></i>
+                </div>
+                <div id="kpi-h" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+                <div class="text-[10px] text-slate-500">Siswa/Hari</div>
+              </div>
+              <div class="bg-white border border-amber-200 p-4 rounded-xl shadow-sm">
+                <div class="text-xs font-bold text-amber-700 flex items-center justify-between">
+                  <span>Sakit (S)</span> <i class="fas fa-briefcase-medical text-amber-500"></i>
+                </div>
+                <div id="kpi-s" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+                <div class="text-[10px] text-slate-500">Siswa/Hari</div>
+              </div>
+              <div class="bg-white border border-blue-200 p-4 rounded-xl shadow-sm">
+                <div class="text-xs font-bold text-blue-700 flex items-center justify-between">
+                  <span>Izin (I)</span> <i class="fas fa-envelope-open-text text-blue-500"></i>
+                </div>
+                <div id="kpi-i" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+                <div class="text-[10px] text-slate-500">Siswa/Hari</div>
+              </div>
+              <div class="bg-white border border-red-200 p-4 rounded-xl shadow-sm col-span-2 sm:col-span-1">
+                <div class="text-xs font-bold text-red-700 flex items-center justify-between">
+                  <span>Alfa (A)</span> <i class="fas fa-user-times text-red-500"></i>
+                </div>
+                <div id="kpi-a" class="text-2xl font-bold text-slate-800 mt-1">0</div>
+                <div class="text-[10px] text-slate-500">Siswa/Hari</div>
+              </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-bold uppercase text-slate-700 mb-3 border-b pb-2 flex items-center gap-2">
+                  <i class="fas fa-chart-pie text-emerald-600"></i> Proporsi Kehadiran Murid (H, S, I, A)
+                </h3>
+                <div class="relative w-full h-64 flex items-center justify-center">
+                  <canvas id="chart-presensi-pie"></canvas>
+                </div>
+              </div>
+              <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-bold uppercase text-slate-700 mb-3 border-b pb-2 flex items-center gap-2">
+                  <i class="fas fa-chart-bar text-blue-600"></i> Tren Ketidakhadiran (Sakit / Izin / Alfa)
+                </h3>
+                <div class="relative w-full h-64 flex items-center justify-center">
+                  <canvas id="chart-presensi-bar"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Bar Export -->
+            <div class="flex justify-between items-center border-b pb-3">
+              <h3 class="font-bold text-slate-800 text-sm">
+                <i class="fas fa-list text-primary mr-1"></i> Rekapitulasi Kehadiran Per Murid
+              </h3>
+              <button type="button" onclick="app.printPDF('area-print-presensi', 'Rekapitulasi_Presensi')"
+                class="btn-secondary text-xs bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-bold">
+                <i class="fas fa-file-pdf text-red-500"></i> Cetak / Pratinjau Rekapitulasi PDF
+              </button>
+            </div>
+
+            <!-- Print Area Wrapper -->
+            <div id="area-print-presensi">
+              <!-- Summary Table per Murid -->
+              <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white mb-6">
+                <table class="w-full text-left border-collapse">
+                  <thead class="bg-slate-100 text-slate-700 text-xs font-bold uppercase">
+                    <tr>
+                      <th class="p-3 text-center w-12 border border-slate-200">No</th>
+                      <th class="p-3 border border-slate-200">NIS / NISN</th>
+                      <th class="p-3 border border-slate-200">Nama Murid</th>
+                      <th class="p-3 text-center border border-slate-200 bg-emerald-50 text-emerald-800">Hadir (H)</th>
+                      <th class="p-3 text-center border border-slate-200 bg-amber-50 text-amber-800">Sakit (S)</th>
+                      <th class="p-3 text-center border border-slate-200 bg-blue-50 text-blue-800">Izin (I)</th>
+                      <th class="p-3 text-center border border-slate-200 bg-red-50 text-red-800">Alfa (A)</th>
+                      <th class="p-3 text-center border border-slate-200">Total Hari</th>
+                      <th class="p-3 text-center border border-slate-200 font-bold">% Kehadiran</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-presensi-summary-body" class="divide-y divide-slate-100 text-xs bg-white">
+                    <!-- Diisi dinamis -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Log Harian Detail Presensi -->
+              <div class="border-t pt-4">
+                <h4 class="font-bold text-slate-800 text-xs uppercase mb-3"><i class="fas fa-history text-slate-500 mr-1"></i> Log Riwayat Presensi Detail Harian</h4>
+                <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-600 text-[11px] uppercase font-bold border-b border-slate-200">
+                      <tr>
+                        <th class="p-2.5 text-center w-28 border">Tanggal</th>
+                        <th class="p-2.5 border">Nama Murid</th>
+                        <th class="p-2.5 text-center w-24 border">Status</th>
+                        <th class="p-2.5 border">Keterangan / Alasan Izin</th>
+                        <th class="p-2.5 text-center border w-32">Diinput Oleh</th>
+                        <th class="p-2.5 text-center border w-24 hide-on-print">Aksi Guru</th>
+                      </tr>
+                    </thead>
+                    <tbody id="table-presensi-log-body" class="divide-y divide-slate-100 text-xs">
+                      <!-- Diisi dinamis -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── TAMPILAN READ-ONLY UNTUK ROLE MURID ── -->
+          <div id="presensi-view-murid" class="hidden space-y-6">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <h3 class="font-bold text-blue-900 text-base" id="murid-presensi-name">Riwayat Kehadiran Anda</h3>
+                <p class="text-xs text-slate-600">Catatan presensi harian tercatat secara resmi oleh Sekolah &amp; Guru Wali.</p>
+              </div>
+              <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full border border-blue-300">
+                <i class="fas fa-eye mr-1"></i> Read-Only Mode
+              </span>
+            </div>
+
+            <!-- Dashboard Ringkasan Murid Login -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+              <div class="bg-gradient-to-br from-blue-600 to-blue-800 text-white p-4 rounded-xl shadow-md">
+                <div class="text-xs font-bold text-blue-100 uppercase">Kehadiran Saya</div>
+                <div id="mp-rate" class="text-2xl font-black mt-1">100%</div>
+              </div>
+              <div class="bg-white border border-emerald-200 p-3 rounded-xl">
+                <div class="text-xs font-bold text-emerald-700">Hadir (H)</div>
+                <div id="mp-h" class="text-xl font-bold text-slate-800 mt-1">0 Hari</div>
+              </div>
+              <div class="bg-white border border-amber-200 p-3 rounded-xl">
+                <div class="text-xs font-bold text-amber-700">Sakit (S)</div>
+                <div id="mp-s" class="text-xl font-bold text-slate-800 mt-1">0 Hari</div>
+              </div>
+              <div class="bg-white border border-blue-200 p-3 rounded-xl">
+                <div class="text-xs font-bold text-blue-700">Izin (I)</div>
+                <div id="mp-i" class="text-xl font-bold text-slate-800 mt-1">0 Hari</div>
+              </div>
+              <div class="bg-white border border-red-200 p-3 rounded-xl col-span-2 sm:col-span-1">
+                <div class="text-xs font-bold text-red-700">Alfa (A)</div>
+                <div id="mp-a" class="text-xl font-bold text-slate-800 mt-1">0 Hari</div>
+              </div>
+            </div>
+
+            <!-- Tabel Riwayat Murid Login -->
+            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-100 text-slate-700 text-xs font-bold uppercase">
+                  <tr>
+                    <th class="p-3 text-center w-12 border">No</th>
+                    <th class="p-3 border w-32">Tanggal</th>
+                    <th class="p-3 text-center border w-28">Status</th>
+                    <th class="p-3 border">Keterangan / Catatan Izin</th>
+                  </tr>
+                </thead>
+                <tbody id="table-presensi-murid-body" class="divide-y divide-slate-100 text-xs">
+                  <!-- Diisi dinamis -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -2140,6 +2492,7 @@
           <div><label class="block font-bold text-slate-700 mb-1 text-xs uppercase">Role / Hak Akses *</label>
             <select id="fu_role" class="input-solid">
               <option value="Guru">Guru Wali</option>
+              <option value="Sekretaris">Sekretaris Kelas</option>
               <option value="Admin">Administrator</option>
             </select>
           </div>
@@ -2149,6 +2502,40 @@
               <i class="fas fa-save"></i> Simpan Akun
             </button>
           </div>
+        <!-- ── Form Edit / Revisi Presensi ── -->
+        <form id="form-presensi" class="hidden space-y-4">
+          <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-xs text-emerald-900 mb-2">
+            <span class="font-bold block text-sm" id="fep_nama_murid">Nama Murid</span>
+            <span class="text-slate-600 block mt-0.5" id="fep_info_detail">Tanggal / Kelas</span>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-2 text-xs uppercase">Status Kehadiran *</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <label class="cursor-pointer border border-emerald-300 p-2.5 rounded-lg text-center font-bold text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 flex items-center justify-center gap-1.5">
+                <input type="radio" name="fep_status" value="H" class="form-radio" onchange="app.toggleEditPresensiKetInput(this.value)"> Hadir (H)
+              </label>
+              <label class="cursor-pointer border border-amber-300 p-2.5 rounded-lg text-center font-bold text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 flex items-center justify-center gap-1.5">
+                <input type="radio" name="fep_status" value="S" class="form-radio" onchange="app.toggleEditPresensiKetInput(this.value)"> Sakit (S)
+              </label>
+              <label class="cursor-pointer border border-blue-300 p-2.5 rounded-lg text-center font-bold text-xs bg-blue-50 text-blue-800 hover:bg-blue-100 flex items-center justify-center gap-1.5">
+                <input type="radio" name="fep_status" value="I" class="form-radio" onchange="app.toggleEditPresensiKetInput(this.value)"> Izin (I)
+              </label>
+              <label class="cursor-pointer border border-red-300 p-2.5 rounded-lg text-center font-bold text-xs bg-red-50 text-red-800 hover:bg-red-100 flex items-center justify-center gap-1.5">
+                <input type="radio" name="fep_status" value="A" class="form-radio" onchange="app.toggleEditPresensiKetInput(this.value)"> Alfa (A)
+              </label>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1 text-xs uppercase">Keterangan / Alasan Izin (Opsional)</label>
+            <input type="text" id="fep_keterangan" class="input-solid text-sm" placeholder="Contoh: Izin kegiatan lomba sekolah / keperluan keluarga">
+          </div>
+          <div class="pt-4 border-t border-slate-200 text-right mt-6">
+            <button type="button" onclick="app.closeModal()" class="btn-secondary mr-2">Batal</button>
+            <button type="submit" class="btn-primary bg-emerald-600 hover:bg-emerald-700 border-none text-white px-6">
+              <i class="fas fa-save"></i> Simpan Revisi Presensi
+            </button>
+          </div>
+        </form>
         </form>
 
 
@@ -2263,7 +2650,8 @@
           Jadwal: [],
           Jurnal: [],
           Laporan: [],
-          Rencana: []
+          Rencana: [],
+          Presensi: []
         },
         activeEditId: null,
         activeFormType: null,
@@ -2369,7 +2757,7 @@
       preloadAllData: async function () {
         if (!app.GAS_WEBAPP_URL) return;
         try {
-          var tables = ['Murid', 'Users', 'Settings', 'Program', 'Jadwal', 'Jurnal', 'Laporan', 'Rencana'];
+          var tables = ['Murid', 'Users', 'Settings', 'Program', 'Jadwal', 'Jurnal', 'Laporan', 'Rencana', 'Presensi'];
           var promises = tables.map(function (t) {
             return app.gasSilent('getTableData', t).then(function (res) {
               if (t === 'Settings') {
@@ -2418,6 +2806,15 @@
             batch.forEach(function (m) {
               if (!m.id) m.id = Date.now().toString() + Math.floor(Math.random() * 1000);
               app.state.db.Murid.push(m);
+            });
+            resolve(true);
+          } else if (funcName === 'savePresensiBatchServer') {
+            var pBatch = args[0] || [];
+            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+            pBatch.forEach(function (rec) {
+              var idx = app.state.db.Presensi.findIndex(function (d) { return app.compareId(d.id, rec.id); });
+              if (idx > -1) app.state.db.Presensi[idx] = rec;
+              else app.state.db.Presensi.push(rec);
             });
             resolve(true);
           } else {
@@ -2511,9 +2908,11 @@
       // FIX 2: getMyData — normalisasi field guruUsername secara konsisten
       getMyData: function (t) {
         var data = app.state.db[t] || [];
-        if (!app.state.user || app.state.user.role === 'Admin') return data;
+        if (!app.state.user) return data;
+        var role = String(app.state.user.role || '').toLowerCase();
+        if (role === 'admin' || role === 'sekretaris' || t === 'Presensi' || t === 'Murid') return data;
         var curUser = String(app.state.user.username || '').toLowerCase();
-        var isMurid = (app.state.user.role === 'Murid');
+        var isMurid = (role === 'murid');
         if (isMurid) {
           if (t === 'Jadwal' || t === 'Program') return data;
         }
@@ -2617,8 +3016,30 @@
       },
 
 
+      _saveSettingsCache: function () {
+        try {
+          if (app.state.db.Settings && typeof app.state.db.Settings === 'object') {
+            localStorage.setItem('settings_db_cache', JSON.stringify(app.state.db.Settings));
+          }
+        } catch (e) { }
+      },
+
+      _loadSettingsCache: function () {
+        try {
+          var c = localStorage.getItem('settings_db_cache');
+          if (c) {
+            var parsed = JSON.parse(c);
+            if (parsed && typeof parsed === 'object') {
+              if (!app.state.db.Settings) app.state.db.Settings = parsed;
+              else app.state.db.Settings = Object.assign({}, parsed, app.state.db.Settings);
+            }
+          }
+        } catch (e) { }
+      },
+
       // FIX 3: getParsedSettings — parsing alamat JSON yang lebih robust
       getParsedSettings: function () {
+        app._loadSettingsCache();
         var s = Object.assign({}, app.state.db.Settings || {});
         if (s.alamat && s.alamat.toString().trim().charAt(0) === '{') {
           try {
@@ -2629,6 +3050,7 @@
             s.nipGuruMap = p.nipGuruMap || {};
           } catch (e) { s.alamat = ''; }
         }
+        if (!s.tahun) s.tahun = '2026/2027';
         if (!s.nipGuruMap) s.nipGuruMap = {};
         if (!s.nipKepsek) s.nipKepsek = '';
         if (!s.kota) s.kota = '';
@@ -2752,7 +3174,8 @@
           'form-jurnal': 'Jurnal',
           'form-laporan': 'Laporan',
           'form-rencana': 'Rencana',
-          'form-users': 'Users'
+          'form-users': 'Users',
+          'form-presensi': 'Presensi'
         };
         Object.keys(formSubmitMap).forEach(function (fId) {
           var tbl = formSubmitMap[fId];
@@ -2827,10 +3250,11 @@
           };
         }
 
-        if (!app.state.db.Users.length) {
+        if (!app.state.db.Users || !app.state.db.Users.length) {
           app.state.db.Users = [
             { id: '1', nama: 'Administrator', username: 'admin', password: 'admin123', role: 'Admin' },
-            { id: '2', nama: 'Budi Santoso, S.Pd', username: 'guru', password: '123', role: 'Guru' }
+            { id: '2', nama: 'Budi Santoso, S.Pd', username: 'guru', password: '123', role: 'Guru' },
+            { id: '3', nama: 'Sekretaris XE6', username: 'sekretaris', password: 'sekretaris123', role: 'Sekretaris' }
           ];
         }
 
@@ -2841,7 +3265,9 @@
           try {
             app.state.user = JSON.parse(saved);
             app._showApp();
-            if (app.state.user.role === 'Murid') {
+            if (app.state.user.role === 'Sekretaris') {
+              app.nav('presensi');
+            } else if (app.state.user.role === 'Murid') {
               app.nav('profilmurid');
             } else {
               app.nav('identitas');
@@ -2875,20 +3301,23 @@
         }
 
 
+        var role = app.state.user.role;
         document.getElementById('sb-user-name').innerText = app.state.user.nama;
-        document.getElementById('sb-user-role').innerText = app.state.user.role === 'Murid' ? 'MURID' : app.state.user.role;
+        document.getElementById('sb-user-role').innerText = role === 'Murid' ? 'MURID' : (role === 'Sekretaris' ? 'SEKRETARIS KELAS' : role);
 
-        var isMurid = app.state.user.role === 'Murid';
         document.querySelectorAll('.nav-btn').forEach(function (btn) {
-          if (isMurid) {
-            if (btn.id === 'nav-profilmurid' || btn.id === 'nav-jadwal') btn.classList.remove('hidden');
+          if (role === 'Sekretaris') {
+            if (btn.id === 'nav-presensi') btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+          } else if (role === 'Murid') {
+            if (btn.id === 'nav-profilmurid' || btn.id === 'nav-jadwal' || btn.id === 'nav-presensi') btn.classList.remove('hidden');
             else btn.classList.add('hidden');
           } else {
             if (btn.id !== 'nav-users') btn.classList.remove('hidden');
           }
         });
 
-        if (app.state.user.role === 'Admin') {
+        if (role === 'Admin') {
           document.getElementById('nav-admin-group').classList.remove('hidden');
           var driveSection = document.getElementById('drive-settings-section');
           if (driveSection) driveSection.classList.remove('hidden');
@@ -2904,6 +3333,7 @@
       setLoginRole: function (role) {
         app.currentLoginRole = role;
         var tabGuru = document.getElementById('tab-login-guru');
+        var tabSekretaris = document.getElementById('tab-login-sekretaris');
         var tabMurid = document.getElementById('tab-login-murid');
         var fieldsGuru = document.getElementById('form-login-guru-fields');
         var fieldsMurid = document.getElementById('form-login-murid-fields');
@@ -2911,16 +3341,43 @@
 
         if (errBox) errBox.classList.add('hidden');
 
-        if (role === 'guru') {
-          tabGuru.className = 'flex-1 py-2.5 text-xs font-bold rounded-lg transition-all bg-white text-primary shadow-sm flex items-center justify-center gap-2';
-          tabMurid.className = 'flex-1 py-2.5 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2';
-          fieldsGuru.classList.remove('hidden');
-          fieldsMurid.classList.add('hidden');
+        var activeClassGuru = 'flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-blue-600 text-white shadow-md flex items-center justify-center gap-1.5 cursor-pointer';
+        var activeClassSek = 'flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-emerald-600 text-white shadow-md flex items-center justify-center gap-1.5 cursor-pointer';
+        var activeClassMurid = 'flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-purple-600 text-white shadow-md flex items-center justify-center gap-1.5 cursor-pointer';
+        var inactiveClass = 'flex-1 py-2.5 text-[11px] sm:text-xs font-bold rounded-lg transition-all bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 flex items-center justify-center gap-1.5 cursor-pointer';
+
+        if (tabGuru) tabGuru.className = (role === 'guru' ? activeClassGuru : inactiveClass);
+        if (tabSekretaris) tabSekretaris.className = (role === 'sekretaris' ? activeClassSek : inactiveClass);
+        if (tabMurid) tabMurid.className = (role === 'murid' ? activeClassMurid : inactiveClass);
+
+        if (role === 'murid') {
+          if (fieldsGuru) fieldsGuru.classList.add('hidden');
+          if (fieldsMurid) fieldsMurid.classList.remove('hidden');
         } else {
-          tabMurid.className = 'flex-1 py-2.5 text-xs font-bold rounded-lg transition-all bg-white text-primary shadow-sm flex items-center justify-center gap-2';
-          tabGuru.className = 'flex-1 py-2.5 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2';
-          fieldsMurid.classList.remove('hidden');
-          fieldsGuru.classList.add('hidden');
+          if (fieldsGuru) fieldsGuru.classList.remove('hidden');
+          if (fieldsMurid) fieldsMurid.classList.add('hidden');
+        }
+      },
+
+      fillDemoAccount: function (type) {
+        if (type === 'sekretaris') {
+          app.setLoginRole('sekretaris');
+          var uInp = document.getElementById('loginUsername');
+          var pInp = document.getElementById('loginPassword');
+          if (uInp) uInp.value = 'sekretaris';
+          if (pInp) pInp.value = 'sekretaris123';
+        } else if (type === 'guru') {
+          app.setLoginRole('guru');
+          var uInp2 = document.getElementById('loginUsername');
+          var pInp2 = document.getElementById('loginPassword');
+          if (uInp2) uInp2.value = 'guru';
+          if (pInp2) pInp2.value = '123';
+        } else if (type === 'admin') {
+          app.setLoginRole('guru');
+          var uInp3 = document.getElementById('loginUsername');
+          var pInp3 = document.getElementById('loginPassword');
+          if (uInp3) uInp3.value = 'admin';
+          if (pInp3) pInp3.value = 'admin123';
         }
       },
 
@@ -2993,21 +3450,48 @@
               throw new Error('Username dan Password wajib diisi.');
             }
 
-            var users = await app.gas('getTableData', 'Users');
-            if (users && users.length > 0) app.state.db.Users = users;
+            try {
+              var liveUsers = await app.gas('getTableData', 'Users');
+              if (liveUsers && Array.isArray(liveUsers) && liveUsers.length > 0) {
+                liveUsers.forEach(function (uRec) {
+                  var idx = app.state.db.Users.findIndex(function (x) {
+                    return app.compareId(x.id, uRec.id) || (x.username || '').toLowerCase() === (uRec.username || '').toLowerCase();
+                  });
+                  if (idx > -1) app.state.db.Users[idx] = uRec;
+                  else app.state.db.Users.push(uRec);
+                });
+              }
+            } catch (e) { }
+
+            // Pastikan akun default selalu ada
+            var defaultAccs = [
+              { id: '1', nama: 'Administrator', username: 'admin', password: 'admin123', role: 'Admin' },
+              { id: '2', nama: 'Budi Santoso, S.Pd', username: 'guru', password: '123', role: 'Guru' },
+              { id: '3', nama: 'Sekretaris XE6', username: 'sekretaris', password: 'sekretaris123', role: 'Sekretaris' }
+            ];
+            defaultAccs.forEach(function (acc) {
+              var hasAcc = app.state.db.Users.some(function (x) {
+                return (x.username || '').trim().toLowerCase() === acc.username.toLowerCase();
+              });
+              if (!hasAcc) app.state.db.Users.push(acc);
+            });
 
             var found = app.state.db.Users.find(function (x) {
-              return (x.username || '') === u && (x.password || '') === p;
+              return (x.username || '').trim().toLowerCase() === u.toLowerCase() && (x.password || '').trim() === p;
             });
 
             if (found) {
               app.state.user = found;
               localStorage.setItem('activeUser', JSON.stringify(found));
               app._showApp();
-              app.nav('identitas');
+              if (found.role === 'Sekretaris') {
+                app.nav('presensi');
+              } else {
+                app.nav('identitas');
+              }
               app.toast('Login Berhasil! Selamat datang, ' + found.nama);
             } else {
-              throw new Error('Username atau Password salah.');
+              throw new Error('Username atau Password salah untuk role ' + app.currentLoginRole.toUpperCase() + '.');
             }
           }
         } catch (err) {
@@ -3033,28 +3517,37 @@
 
 
         app.state.user = null;
-        app.state.db = { Settings: null, Users: [], Murid: [], Program: [], Jadwal: [], Jurnal: [], Laporan: [], Rencana: [] };
         localStorage.removeItem('activeUser');
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
+        if (document.getElementById('loginUsername')) document.getElementById('loginUsername').value = '';
+        if (document.getElementById('loginPassword')) document.getElementById('loginPassword').value = '';
+        if (document.getElementById('loginNisn')) document.getElementById('loginNisn').value = '';
 
+        // Sembunyikan loading jika ada
+        var loadingEl = document.getElementById('global-loading');
+        if (loadingEl) {
+          loadingEl.classList.add('hidden');
+          loadingEl.classList.add('pointer-events-none');
+        }
 
         // Sembunyikan app & sidebar
         var appContainer = document.getElementById('app-container');
-        appContainer.classList.add('hidden');
-        appContainer.style.display = '';
-
+        if (appContainer) {
+          appContainer.classList.add('hidden');
+          appContainer.style.display = 'none';
+        }
 
         var sidebar = document.getElementById('sidebar');
-        sidebar.style.display = 'none';
-
+        if (sidebar) sidebar.style.display = 'none';
 
         // Tampilkan login screen
         var loginScreen = document.getElementById('login-screen');
-        loginScreen.style.display = '';
-
+        if (loginScreen) {
+          loginScreen.classList.remove('hidden');
+          loginScreen.style.display = 'flex';
+        }
 
         document.getElementById('nav-admin-group').classList.add('hidden');
+        app.setLoginRole('guru');
       },
 
 
@@ -3104,6 +3597,7 @@
           await app.gas('saveRecord', 'Users', updatedUser);
           app.state.db.Settings = settings;
           app.state.user = updatedUser;
+          app._saveSettingsCache();
           localStorage.setItem('activeUser', JSON.stringify(updatedUser));
           document.getElementById('sb-user-name').innerText = namaBaru;
           document.getElementById('id_password').value = '';
@@ -3145,11 +3639,785 @@
         app.setIdentitasEditable(!app.state.identitasEditable);
       },
 
+
+      // ── PRESENSI & REKAPITULASI MURID ─────────────────────────
+      _presensiCharts: { pie: null, bar: null },
+      activePresensiSubTab: 'input',
+
+      switchPresensiSubTab: function (tab) {
+        app.activePresensiSubTab = tab;
+        var btnInput = document.getElementById('tab-presensi-sub-input');
+        var btnRekap = document.getElementById('tab-presensi-sub-rekap');
+        var viewInput = document.getElementById('presensi-view-input');
+        var viewRekap = document.getElementById('presensi-view-rekap');
+
+        var activeClass = 'flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white text-emerald-700 shadow-sm flex items-center justify-center gap-2';
+        var inactiveClass = 'flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-800 flex items-center justify-center gap-2';
+
+        if (tab === 'input') {
+          if (btnInput) btnInput.className = activeClass;
+          if (btnRekap) btnRekap.className = inactiveClass;
+          if (viewInput) viewInput.classList.remove('hidden');
+          if (viewRekap) viewRekap.classList.add('hidden');
+          app.loadPresensiInputTable();
+        } else {
+          if (btnInput) btnInput.className = inactiveClass;
+          if (btnRekap) btnRekap.className = activeClass;
+          if (viewInput) viewInput.classList.add('hidden');
+          if (viewRekap) viewRekap.classList.remove('hidden');
+          app.loadPresensiRekapView();
+        }
+      },
+
+      _savePresensiCache: function () {
+        try {
+          if (Array.isArray(app.state.db.Presensi)) {
+            localStorage.setItem('presensi_db_cache', JSON.stringify(app.state.db.Presensi));
+          }
+        } catch (e) { }
+      },
+
+      _loadPresensiCache: function () {
+        try {
+          var c = localStorage.getItem('presensi_db_cache');
+          if (c) {
+            var parsed = JSON.parse(c);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+              parsed.forEach(function (rec) {
+                var idx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
+                if (idx > -1) app.state.db.Presensi[idx] = rec;
+                else app.state.db.Presensi.push(rec);
+              });
+            }
+          }
+        } catch (e) { }
+      },
+
+      loadPresensi: async function () {
+        app._loadPresensiCache();
+        try {
+          var liveData = await app.gasSilent('getTableData', 'Presensi');
+          if (liveData && Array.isArray(liveData) && liveData.length > 0) {
+            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+            liveData.forEach(function (rec) {
+              var idx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
+              if (idx > -1) app.state.db.Presensi[idx] = rec;
+              else app.state.db.Presensi.push(rec);
+            });
+            app._savePresensiCache();
+          }
+        } catch (e) { }
+
+        var datePicker = document.getElementById('presensi-date-picker');
+        if (datePicker && !datePicker.value) {
+          var today = new Date().toISOString().split('T')[0];
+          datePicker.value = today;
+        }
+
+        var role = app.state.user ? app.state.user.role : '';
+        var tabContainer = document.getElementById('presensi-tab-container');
+        var viewInput = document.getElementById('presensi-view-input');
+        var viewRekap = document.getElementById('presensi-view-rekap');
+        var viewMurid = document.getElementById('presensi-view-murid');
+
+        if (role === 'Sekretaris') {
+          if (tabContainer) tabContainer.classList.add('hidden');
+          if (viewInput) viewInput.classList.remove('hidden');
+          if (viewRekap) viewRekap.classList.add('hidden');
+          if (viewMurid) viewMurid.classList.add('hidden');
+          app.loadPresensiInputTable();
+        } else if (role === 'Murid') {
+          if (tabContainer) tabContainer.classList.add('hidden');
+          if (viewInput) viewInput.classList.add('hidden');
+          if (viewRekap) viewRekap.classList.add('hidden');
+          if (viewMurid) viewMurid.classList.remove('hidden');
+          app.loadPresensiMuridView();
+        } else {
+          if (tabContainer) tabContainer.classList.remove('hidden');
+          if (viewMurid) viewMurid.classList.add('hidden');
+          app.switchPresensiSubTab(app.activePresensiSubTab || 'input');
+        }
+      },
+
+      _saveMuridCache: function () {
+        try {
+          if (Array.isArray(app.state.db.Murid) && app.state.db.Murid.length > 0) {
+            localStorage.setItem('murid_db_cache', JSON.stringify(app.state.db.Murid));
+          }
+        } catch (e) { }
+      },
+
+      _loadMuridCache: function () {
+        try {
+          var c = localStorage.getItem('murid_db_cache');
+          if (c) {
+            var parsed = JSON.parse(c);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              if (!Array.isArray(app.state.db.Murid) || app.state.db.Murid.length === 0) {
+                app.state.db.Murid = parsed;
+              }
+            }
+          }
+        } catch (e) { }
+      },
+
+      loadPresensiInputTable: async function () {
+        app._loadMuridCache();
+        try {
+          if (!app.state.db.Murid || app.state.db.Murid.length === 0) {
+            var liveMurids = await app.gasSilent('getTableData', 'Murid');
+            if (liveMurids && Array.isArray(liveMurids) && liveMurids.length > 0) {
+              app.state.db.Murid = liveMurids;
+              app._saveMuridCache();
+            }
+          }
+        } catch (e) { }
+        var dateVal = document.getElementById('presensi-date-picker') ? document.getElementById('presensi-date-picker').value : '';
+        if (!dateVal) {
+          dateVal = new Date().toISOString().split('T')[0];
+          if (document.getElementById('presensi-date-picker')) document.getElementById('presensi-date-picker').value = dateVal;
+        }
+        var classVal = document.getElementById('presensi-class-picker') ? document.getElementById('presensi-class-picker').value : 'XE6';
+
+        var role = app.state.user ? app.state.user.role : '';
+        var curRole = role ? String(role).toLowerCase() : '';
+        var todayStr = new Date().toISOString().split('T')[0];
+
+        var isLockedForSekretaris = (curRole === 'sekretaris' && dateVal < todayStr);
+        var lockBanner = document.getElementById('presensi-lock-banner');
+        if (lockBanner) {
+          if (isLockedForSekretaris) lockBanner.classList.remove('hidden');
+          else lockBanner.classList.add('hidden');
+        }
+
+        var btnSave = document.getElementById('btn-save-presensi-batch');
+        if (btnSave) {
+          if (isLockedForSekretaris) {
+            btnSave.disabled = true;
+            btnSave.classList.add('opacity-50', 'cursor-not-allowed');
+          } else {
+            btnSave.disabled = false;
+            btnSave.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+        }
+
+        var allStudents = (app.state.db.Murid || []).map(function (m) { return app._normalizeStudent(m); }).filter(Boolean);
+        var filteredStudents = allStudents;
+        if (classVal && classVal !== 'Semua') {
+          filteredStudents = allStudents.filter(function (s) {
+            return (s.kelas || '').trim().toUpperCase().replace(/\s+/g, '') === classVal.toUpperCase().replace(/\s+/g, '') ||
+                   (s.kelas || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') === classVal.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          });
+        }
+        if (filteredStudents.length === 0) filteredStudents = allStudents;
+
+        filteredStudents.sort(function (a, b) { return (a.nama || '').localeCompare(b.nama || ''); });
+
+        var presensiToday = (app.state.db.Presensi || []).filter(function (p) {
+          return (p.tanggal || '').trim() === dateVal;
+        });
+
+        var tbody = document.getElementById('table-presensi-input-body');
+        if (!tbody) return;
+
+        if (filteredStudents.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500 italic"><i class="fas fa-users-slash text-3xl mb-2 block"></i>Belum ada data murid untuk kelas ' + classVal + '. Silakan tambah murid di menu Data Murid.</td></tr>';
+          app.updatePresensiCounters();
+          return;
+        }
+
+        var html = '';
+        filteredStudents.forEach(function (m, idx) {
+          var existing = presensiToday.find(function (p) { return app.compareId(p.siswaId || p.siswaid, m.id); });
+          var curStatus = existing ? (existing.status || 'H') : 'H';
+          var curKet = existing ? (existing.keterangan || '') : '';
+
+          var fotoUrl = m.fotoUrl || m.fotourl || '';
+          var fotoTag = fotoUrl
+            ? '<img src="' + fotoUrl + '" class="w-8 h-10 object-cover rounded mx-auto border border-slate-200">'
+            : '<div class="w-8 h-10 bg-slate-100 rounded flex items-center justify-center mx-auto text-slate-400 text-xs"><i class="fas fa-user"></i></div>';
+
+          var disAttr = isLockedForSekretaris ? 'disabled' : '';
+
+          var hChecked = curStatus === 'H' ? 'checked' : '';
+          var sChecked = curStatus === 'S' ? 'checked' : '';
+          var iChecked = curStatus === 'I' ? 'checked' : '';
+          var aChecked = curStatus === 'A' ? 'checked' : '';
+
+          var ketDisabled = (curStatus !== 'I' || isLockedForSekretaris) ? 'disabled' : '';
+
+          html += '<tr class="hover:bg-slate-50 transition-colors" id="p-row-' + m.id + '">' +
+            '<td class="p-3 text-center font-bold text-slate-500 text-xs">' + (idx + 1) + '</td>' +
+            '<td class="p-2 text-center">' + fotoTag + '</td>' +
+            '<td class="p-3"><span class="font-bold text-slate-700 text-xs">' + (m.nis || '-') + '</span><br><span class="text-[11px] text-slate-400">' + (m.nisn || '-') + '</span></td>' +
+            '<td class="p-3"><span class="font-bold text-slate-900 text-sm">' + m.nama + '</span><br><span class="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Kelas ' + (m.kelas || 'XE6') + '</span></td>' +
+            '<td class="p-3 text-center">' +
+              '<div class="inline-flex bg-slate-100 p-1 rounded-lg border border-slate-200 gap-1">' +
+                '<label class="cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 ' + (curStatus==='H'?'bg-emerald-600 text-white shadow-sm':'text-slate-600 hover:text-emerald-700') + '">' +
+                  '<input type="radio" name="st_' + m.id + '" value="H" ' + hChecked + ' ' + disAttr + ' onchange="app.handlePresensiStatusChange(\'' + m.id + '\',\'H\')" class="hidden"> H' +
+                '</label>' +
+                '<label class="cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 ' + (curStatus==='S'?'bg-amber-500 text-white shadow-sm':'text-slate-600 hover:text-amber-700') + '">' +
+                  '<input type="radio" name="st_' + m.id + '" value="S" ' + sChecked + ' ' + disAttr + ' onchange="app.handlePresensiStatusChange(\'' + m.id + '\',\'S\')" class="hidden"> S' +
+                '</label>' +
+                '<label class="cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 ' + (curStatus==='I'?'bg-blue-600 text-white shadow-sm':'text-slate-600 hover:text-blue-700') + '">' +
+                  '<input type="radio" name="st_' + m.id + '" value="I" ' + iChecked + ' ' + disAttr + ' onchange="app.handlePresensiStatusChange(\'' + m.id + '\',\'I\')" class="hidden"> I' +
+                '</label>' +
+                '<label class="cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 ' + (curStatus==='A'?'bg-red-600 text-white shadow-sm':'text-slate-600 hover:text-red-700') + '">' +
+                  '<input type="radio" name="st_' + m.id + '" value="A" ' + aChecked + ' ' + disAttr + ' onchange="app.handlePresensiStatusChange(\'' + m.id + '\',\'A\')" class="hidden"> A' +
+                '</label>' +
+              '</div>' +
+            '</td>' +
+            '<td class="p-3">' +
+              '<input type="text" id="ket_izin_' + m.id + '" value="' + curKet.replace(/"/g, '&quot;') + '" ' + ketDisabled + ' ' + disAttr + ' ' +
+                'class="input-solid text-xs py-1.5 px-3 bg-white border-slate-300 rounded-lg" ' +
+                'placeholder="' + (curStatus === 'I' ? 'Isi keterangan izin (opsional: misal tugas sekolah/lomba)' : 'Hanya aktif jika status Izin (I)') + '">' +
+            '</td>' +
+            '</tr>';
+        });
+
+        tbody.innerHTML = html;
+        app.updatePresensiCounters();
+      },
+
+      handlePresensiStatusChange: function (studentId, status) {
+        var row = document.getElementById('p-row-' + studentId);
+        if (!row) return;
+
+        row.querySelectorAll('label').forEach(function (lbl) {
+          var input = lbl.querySelector('input');
+          if (input) {
+            var val = input.value;
+            if (val === status) {
+              input.checked = true;
+              if (val === 'H') lbl.className = 'cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 bg-emerald-600 text-white shadow-sm';
+              if (val === 'S') lbl.className = 'cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 bg-amber-500 text-white shadow-sm';
+              if (val === 'I') lbl.className = 'cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 bg-blue-600 text-white shadow-sm';
+              if (val === 'A') lbl.className = 'cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 bg-red-600 text-white shadow-sm';
+            } else {
+              input.checked = false;
+              lbl.className = 'cursor-pointer px-2.5 py-1 rounded text-xs font-bold transition-all flex items-center gap-1 text-slate-600 hover:text-slate-900';
+            }
+          }
+        });
+
+        var ketInput = document.getElementById('ket_izin_' + studentId);
+        if (ketInput) {
+          if (status === 'I') {
+            ketInput.disabled = false;
+            ketInput.placeholder = 'Isi keterangan izin (opsional: misal tugas sekolah/lomba)';
+            ketInput.focus();
+          } else {
+            ketInput.disabled = true;
+            ketInput.placeholder = 'Hanya aktif jika status Izin (I)';
+          }
+        }
+
+        app.updatePresensiCounters();
+      },
+
+      markAllPresensi: function (status) {
+        status = status || 'H';
+        var tbody = document.getElementById('table-presensi-input-body');
+        if (!tbody) return;
+        tbody.querySelectorAll('tr').forEach(function (row) {
+          var rowId = row.id.replace('p-row-', '');
+          if (rowId) app.handlePresensiStatusChange(rowId, status);
+        });
+        app.toast('Semua murid ditandai ' + (status === 'H' ? 'Hadir (H)' : status));
+      },
+
+      updatePresensiCounters: function () {
+        var tbody = document.getElementById('table-presensi-input-body');
+        if (!tbody) return;
+        var h = 0, s = 0, i = 0, a = 0, total = 0;
+        tbody.querySelectorAll('tr').forEach(function (row) {
+          var checkedRadio = row.querySelector('input[type="radio"]:checked');
+          if (checkedRadio) {
+            total++;
+            var v = checkedRadio.value;
+            if (v === 'H') h++;
+            if (v === 'S') s++;
+            if (v === 'I') i++;
+            if (v === 'A') a++;
+          }
+        });
+        if (document.getElementById('count-chip-h')) document.getElementById('count-chip-h').innerText = h;
+        if (document.getElementById('count-chip-s')) document.getElementById('count-chip-s').innerText = s;
+        if (document.getElementById('count-chip-i')) document.getElementById('count-chip-i').innerText = i;
+        if (document.getElementById('count-chip-a')) document.getElementById('count-chip-a').innerText = a;
+        if (document.getElementById('count-chip-total')) document.getElementById('count-chip-total').innerText = total;
+      },
+
+      savePresensiBatch: async function () {
+        var dateVal = document.getElementById('presensi-date-picker') ? document.getElementById('presensi-date-picker').value : '';
+        if (!dateVal) return alert('Pilih tanggal presensi terlebih dahulu.');
+
+        var classVal = document.getElementById('presensi-class-picker') ? document.getElementById('presensi-class-picker').value : 'XE6';
+        var tbody = document.getElementById('table-presensi-input-body');
+        if (!tbody) return;
+
+        var rows = tbody.querySelectorAll('tr');
+        if (rows.length === 0) return alert('Tidak ada data murid yang diproses.');
+
+        var records = [];
+        var curUser = app.state.user ? app.state.user.username : 'admin';
+        var curUserRole = app.state.user ? app.state.user.role : 'Guru';
+
+        rows.forEach(function (row) {
+          var studentId = row.id.replace('p-row-', '');
+          if (!studentId) return;
+
+          var checkedRadio = row.querySelector('input[type="radio"]:checked');
+          var statusVal = checkedRadio ? checkedRadio.value : 'H';
+
+          var ketInput = document.getElementById('ket_izin_' + studentId);
+          var ketVal = (statusVal === 'I' && ketInput) ? ketInput.value.trim() : '';
+
+          var existing = (app.state.db.Presensi || []).find(function (p) {
+            return (p.tanggal || '').trim() === dateVal && app.compareId(p.siswaId || p.siswaid, studentId);
+          });
+
+          var pId = existing ? existing.id : ('P_' + dateVal.replace(/-/g, '') + '_' + studentId);
+
+          records.push({
+            id: pId,
+            tanggal: dateVal,
+            siswaId: studentId,
+            status: statusVal,
+            keterangan: ketVal,
+            kelas: classVal,
+            guruUsername: curUser,
+            inputBy: app.state.user ? app.state.user.nama + ' (' + curUserRole + ')' : curUser
+          });
+        });
+
+        // ── Update DB Lokal Instan ──
+        if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+        records.forEach(function (rec) {
+          var dbIdx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
+          if (dbIdx > -1) app.state.db.Presensi[dbIdx] = rec;
+          else app.state.db.Presensi.push(rec);
+        });
+        app._savePresensiCache();
+
+        // ── Visual Loading State Cepat ──
+        var loadingEl = document.getElementById('global-loading');
+        var loadingText = loadingEl ? loadingEl.querySelector('span') : null;
+        if (loadingEl) {
+          if (loadingText) loadingText.innerText = 'MENYIMPAN PRESENSI HARIAN (' + records.length + ' MURID)...';
+          loadingEl.classList.remove('hidden');
+        }
+
+        // Disable tombol selama sinkronisasi
+        var btns = document.querySelectorAll('#presensi-view-input button');
+        btns.forEach(function (b) { b.disabled = true; });
+
+        try {
+          // 1 Request Batch sekaligus (super cepat & hemat jaringan)
+          var res = await app.gasSilent('savePresensiBatchServer', records);
+          if (!res) {
+            // Fallback paralel simultan jika batch server belum ter-deploy
+            await Promise.all(records.map(function (rec) {
+              return app.gasSilent('saveRecord', 'Presensi', rec);
+            }));
+          }
+          app.toast('Presensi harian tanggal ' + dateVal + ' (' + records.length + ' murid) berhasil disimpan!');
+        } catch (err) {
+          console.warn('Gagal sinkronisasi presensi ke server:', err);
+          app.toast('Presensi disimpan secara lokal.');
+        } finally {
+          if (loadingEl) {
+            if (loadingText) loadingText.innerText = 'MEMPROSES DATA...';
+            loadingEl.classList.add('hidden');
+          }
+          btns.forEach(function (b) { b.disabled = false; });
+        }
+      },
+
+      setRekapDateFilter: function (preset) {
+        var dStartEl = document.getElementById('filter-rekap-date-start');
+        var dEndEl = document.getElementById('filter-rekap-date-end');
+        var today = new Date().toISOString().split('T')[0];
+
+        if (preset === 'today') {
+          if (dStartEl) dStartEl.value = today;
+          if (dEndEl) dEndEl.value = today;
+        } else if (preset === 'month') {
+          var now = new Date();
+          var firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+          var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+          if (dStartEl) dStartEl.value = firstDay;
+          if (dEndEl) dEndEl.value = lastDay;
+        } else if (preset === 'all') {
+          if (dStartEl) dStartEl.value = '';
+          if (dEndEl) dEndEl.value = '';
+        }
+
+        app.loadPresensiRekapView();
+      },
+
+      loadPresensiRekapView: async function () {
+        try {
+          var liveData = await app.gasSilent('getTableData', 'Presensi');
+          if (liveData && Array.isArray(liveData) && liveData.length > 0) {
+            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+            liveData.forEach(function (rec) {
+              var idx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
+              if (idx > -1) app.state.db.Presensi[idx] = rec;
+              else app.state.db.Presensi.push(rec);
+            });
+          }
+        } catch (e) { }
+
+        // Set default filter tanggal ke Hari Ini jika pertama kali dibuka
+        var dStartEl = document.getElementById('filter-rekap-date-start');
+        var dEndEl = document.getElementById('filter-rekap-date-end');
+        var today = new Date().toISOString().split('T')[0];
+
+        if (dStartEl && !dStartEl.value && dEndEl && !dEndEl.value && !app.state._rekapFilterInitialized) {
+          dStartEl.value = today;
+          dEndEl.value = today;
+          app.state._rekapFilterInitialized = true;
+        }
+
+        var allStudents = (app.state.db.Murid || []).map(function (m) { return app._normalizeStudent(m); }).filter(Boolean);
+        var allPresensi = app.state.db.Presensi || [];
+
+        var searchVal = (document.getElementById('filter-rekap-search') ? document.getElementById('filter-rekap-search').value : '').toLowerCase();
+        var statusFilter = document.getElementById('filter-rekap-status') ? document.getElementById('filter-rekap-status').value : '';
+        var dStart = dStartEl ? dStartEl.value : '';
+        var dEnd = dEndEl ? dEndEl.value : '';
+
+        var filteredLogs = allPresensi.filter(function (p) {
+          var pDate = (p.tanggal || '').trim();
+          if (dStart && pDate < dStart) return false;
+          if (dEnd && pDate > dEnd) return false;
+          if (statusFilter && (p.status || '') !== statusFilter) return false;
+          if (searchVal) {
+            var mName = app.getMuridNameOnly(p.siswaId || p.siswaid).toLowerCase();
+            if (!mName.includes(searchVal)) return false;
+          }
+          return true;
+        });
+
+        filteredLogs.sort(function (a, b) { return (b.tanggal || '').localeCompare(a.tanggal || ''); });
+
+        var totalH = 0, totalS = 0, totalI = 0, totalA = 0;
+        filteredLogs.forEach(function (p) {
+          if (p.status === 'H') totalH++;
+          if (p.status === 'S') totalS++;
+          if (p.status === 'I') totalI++;
+          if (p.status === 'A') totalA++;
+        });
+
+        var totalRecords = filteredLogs.length;
+        var rate = totalRecords > 0 ? ((totalH / totalRecords) * 100).toFixed(1) : '100.0';
+
+        if (document.getElementById('kpi-rate')) document.getElementById('kpi-rate').innerText = rate + '%';
+        if (document.getElementById('kpi-h')) document.getElementById('kpi-h').innerText = totalH;
+        if (document.getElementById('kpi-s')) document.getElementById('kpi-s').innerText = totalS;
+        if (document.getElementById('kpi-i')) document.getElementById('kpi-i').innerText = totalI;
+        if (document.getElementById('kpi-a')) document.getElementById('kpi-a').innerText = totalA;
+
+        var summaryBody = document.getElementById('table-presensi-summary-body');
+        if (summaryBody) {
+          var filteredStudentsForSummary = allStudents;
+          if (searchVal) {
+            filteredStudentsForSummary = allStudents.filter(function (s) {
+              return (s.nama || '').toLowerCase().includes(searchVal);
+            });
+          }
+          filteredStudentsForSummary.sort(function (a, b) { return (a.nama || '').localeCompare(b.nama || ''); });
+
+          summaryBody.innerHTML = filteredStudentsForSummary.map(function (m, idx) {
+            var mLogs = filteredLogs.filter(function (p) { return app.compareId(p.siswaId || p.siswaid, m.id); });
+            var mH = mLogs.filter(function (p) { return p.status === 'H'; }).length;
+            var mS = mLogs.filter(function (p) { return p.status === 'S'; }).length;
+            var mI = mLogs.filter(function (p) { return p.status === 'I'; }).length;
+            var mA = mLogs.filter(function (p) { return p.status === 'A'; }).length;
+            var mTotal = mLogs.length;
+            var mRate = mTotal > 0 ? ((mH / mTotal) * 100).toFixed(0) : '100';
+
+            var badgeRateClass = parseInt(mRate) >= 90 ? 'text-emerald-700 bg-emerald-100' : (parseInt(mRate) >= 75 ? 'text-amber-700 bg-amber-100' : 'text-red-700 bg-red-100');
+
+            return '<tr class="border-b hover:bg-slate-50">' +
+              '<td class="p-2.5 text-center font-bold text-slate-500 border">' + (idx + 1) + '</td>' +
+              '<td class="p-2.5 border"><span class="font-bold">' + (m.nis || '-') + '</span> / <span class="text-slate-500">' + (m.nisn || '-') + '</span></td>' +
+              '<td class="p-2.5 border font-bold text-slate-900">' + m.nama + '</td>' +
+              '<td class="p-2.5 text-center border font-bold text-emerald-700 bg-emerald-50/50">' + mH + '</td>' +
+              '<td class="p-2.5 text-center border font-bold text-amber-700 bg-amber-50/50">' + mS + '</td>' +
+              '<td class="p-2.5 text-center border font-bold text-blue-700 bg-blue-50/50">' + mI + '</td>' +
+              '<td class="p-2.5 text-center border font-bold text-red-700 bg-red-50/50">' + mA + '</td>' +
+              '<td class="p-2.5 text-center border font-bold text-slate-700">' + mTotal + ' Hari</td>' +
+              '<td class="p-2.5 text-center border"><span class="px-2 py-0.5 rounded font-bold text-xs ' + badgeRateClass + '">' + mRate + '%</span></td>' +
+              '</tr>';
+          }).join('') || '<tr><td colspan="9" class="p-4 text-center text-slate-500">Data rekapitulasi presensi murid kosong.</td></tr>';
+        }
+
+        var logBody = document.getElementById('table-presensi-log-body');
+        if (logBody) {
+          var curRole = (app.state.user && app.state.user.role) ? String(app.state.user.role).toLowerCase() : 'guru';
+          var todayStr = new Date().toISOString().split('T')[0];
+
+          logBody.innerHTML = filteredLogs.map(function (p) {
+            var isEditable = (curRole !== 'murid') && (curRole !== 'sekretaris' || (p.tanggal || '').trim() === todayStr);
+
+            var stBadge = p.status === 'H' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+              (p.status === 'S' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+              (p.status === 'I' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-red-100 text-red-800 border-red-300'));
+            var stName = p.status === 'H' ? 'Hadir' : (p.status === 'S' ? 'Sakit' : (p.status === 'I' ? 'Izin' : 'Alfa'));
+
+            var statusCell = '';
+            if (isEditable) {
+              statusCell = '<div class="inline-flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 gap-0.5">' +
+                '<button type="button" onclick="app.quickUpdatePresensiStatus(\'' + p.id + '\',\'H\')" class="w-6 h-6 rounded text-xs font-bold transition-colors ' + (p.status==='H'?'bg-emerald-600 text-white shadow-sm':'text-slate-500 hover:bg-emerald-100 hover:text-emerald-800') + '" title="Set Hadir">H</button>' +
+                '<button type="button" onclick="app.quickUpdatePresensiStatus(\'' + p.id + '\',\'S\')" class="w-6 h-6 rounded text-xs font-bold transition-colors ' + (p.status==='S'?'bg-amber-500 text-white shadow-sm':'text-slate-500 hover:bg-amber-100 hover:text-amber-800') + '" title="Set Sakit">S</button>' +
+                '<button type="button" onclick="app.quickUpdatePresensiStatus(\'' + p.id + '\',\'I\')" class="w-6 h-6 rounded text-xs font-bold transition-colors ' + (p.status==='I'?'bg-blue-600 text-white shadow-sm':'text-slate-500 hover:bg-blue-100 hover:text-blue-800') + '" title="Set Izin">I</button>' +
+                '<button type="button" onclick="app.quickUpdatePresensiStatus(\'' + p.id + '\',\'A\')" class="w-6 h-6 rounded text-xs font-bold transition-colors ' + (p.status==='A'?'bg-red-600 text-white shadow-sm':'text-slate-500 hover:bg-red-100 hover:text-red-800') + '" title="Set Alfa">A</button>' +
+              '</div>';
+            } else {
+              statusCell = '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold border ' + stBadge + '">' + stName + ' (' + p.status + ')</span>';
+            }
+
+            var ketCell = isEditable
+              ? '<input type="text" value="' + (p.keterangan || '').replace(/"/g, '&quot;') + '" onchange="app.quickUpdatePresensiKet(\'' + p.id + '\', this.value)" class="w-full text-xs border border-slate-200 hover:border-slate-400 focus:border-emerald-500 rounded px-2 py-1 bg-white transition-colors" placeholder="Isi catatan (opsional)">'
+              : (p.keterangan || '-');
+
+            var aksiCell = isEditable
+              ? '<td class="p-2.5 text-center border hide-on-print">' +
+                  '<button onclick="app.editPresensiSingle(\'' + p.id + '\')" class="w-7 h-7 rounded bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 m-0.5" title="Revisi/Edit Modal"><i class="fas fa-edit"></i></button>' +
+                  '<button onclick="app.deletePresensiSingle(\'' + p.id + '\')" class="w-7 h-7 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 m-0.5" title="Hapus"><i class="fas fa-trash"></i></button>' +
+                '</td>'
+              : '<td class="p-2.5 text-center border hide-on-print text-slate-400">-</td>';
+
+            return '<tr class="border-b hover:bg-slate-50">' +
+              '<td class="p-2.5 text-center font-bold text-slate-700 border">' + (p.tanggal || '-') + '</td>' +
+              '<td class="p-2.5 border font-bold text-slate-900">' + app.getMuridNameOnly(p.siswaId || p.siswaid) + '</td>' +
+              '<td class="p-2.5 text-center border">' + statusCell + '</td>' +
+              '<td class="p-2.5 border text-slate-700">' + ketCell + '</td>' +
+              '<td class="p-2.5 text-center border text-slate-500 font-medium text-[11px]">' + (p.inputBy || p.guruUsername || '-') + '</td>' +
+              aksiCell +
+              '</tr>';
+          }).join('') || '<tr><td colspan="6" class="p-4 text-center text-slate-500">Log riwayat presensi harian belum tersedia.</td></tr>';
+        }
+
+        app.renderPresensiCharts(totalH, totalS, totalI, totalA);
+      },
+
+      quickUpdatePresensiStatus: async function (id, newStatus) {
+        var p = (app.state.db.Presensi || []).find(function (x) { return app.compareId(x.id, id); });
+        if (!p) return;
+        if (p.status === newStatus) return;
+
+        var oldStatus = p.status;
+        p.status = newStatus;
+        p.inputBy = app.state.user ? app.state.user.nama + ' (' + app.state.user.role + ' Revisi)' : 'Guru Revisi';
+
+        if (newStatus === 'I' && !p.keterangan) {
+          var ketPrompt = prompt('Isi keterangan / alasan izin murid (opsional):', '');
+          if (ketPrompt !== null) p.keterangan = ketPrompt.trim();
+        }
+
+        app._savePresensiCache();
+        try {
+          await app.gasSilent('saveRecord', 'Presensi', p);
+          app.toast('Status presensi ' + app.getMuridNameOnly(p.siswaId || p.siswaid) + ' diubah ke (' + newStatus + ')');
+          app.loadPresensiRekapView();
+        } catch (err) {
+          p.status = oldStatus;
+          alert('Gagal memperbarui status presensi.');
+        }
+      },
+
+      quickUpdatePresensiKet: async function (id, newKet) {
+        var p = (app.state.db.Presensi || []).find(function (x) { return app.compareId(x.id, id); });
+        if (!p) return;
+        if ((p.keterangan || '') === newKet.trim()) return;
+
+        p.keterangan = newKet.trim();
+        p.inputBy = app.state.user ? app.state.user.nama + ' (' + app.state.user.role + ' Revisi)' : 'Guru Revisi';
+
+        app._savePresensiCache();
+        try {
+          await app.gasSilent('saveRecord', 'Presensi', p);
+          app.toast('Catatan izin berhasil diperbarui!');
+        } catch (err) { }
+      },
+
+      editPresensiSingle: function (id) {
+        var p = (app.state.db.Presensi || []).find(function (x) { return app.compareId(x.id, id); });
+        if (!p) return alert('Data presensi tidak ditemukan.');
+
+        app.openModal('presensi');
+        app.state.activeEditId = p.id;
+        document.getElementById('modal-title').innerText = 'Revisi Data Presensi';
+
+        var mName = app.getMuridNameOnly(p.siswaId || p.siswaid);
+        document.getElementById('fep_nama_murid').innerText = mName;
+        document.getElementById('fep_info_detail').innerText = 'Tanggal: ' + (p.tanggal || '-') + ' | Kelas: ' + (p.kelas || 'XE6') + ' | Diinput Oleh: ' + (p.inputBy || p.guruUsername || '-');
+
+        var st = p.status || 'H';
+        document.querySelectorAll('input[name="fep_status"]').forEach(function (r) {
+          r.checked = (r.value === st);
+        });
+
+        document.getElementById('fep_keterangan').value = p.keterangan || '';
+        app.toggleEditPresensiKetInput(st);
+      },
+
+      toggleEditPresensiKetInput: function (status) {
+        var ketInp = document.getElementById('fep_keterangan');
+        if (ketInp) {
+          if (status === 'I') {
+            ketInp.disabled = false;
+            ketInp.placeholder = 'Isi keterangan / alasan izin (opsional)';
+          } else {
+            ketInp.disabled = true;
+            ketInp.placeholder = 'Hanya aktif untuk status Izin (I)';
+          }
+        }
+      },
+
+      renderPresensiCharts: function (h, s, i, a) {
+        if (typeof Chart === 'undefined') return;
+
+        if (app._presensiCharts.pie) app._presensiCharts.pie.destroy();
+        if (app._presensiCharts.bar) app._presensiCharts.bar.destroy();
+
+        var pieCtx = document.getElementById('chart-presensi-pie');
+        if (pieCtx) {
+          app._presensiCharts.pie = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Hadir (H)', 'Sakit (S)', 'Izin (I)', 'Alfa (A)'],
+              datasets: [{
+                data: [h, s, i, a],
+                backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom' }
+              }
+            }
+          });
+        }
+
+        var barCtx = document.getElementById('chart-presensi-bar');
+        if (barCtx) {
+          app._presensiCharts.bar = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+              labels: ['Sakit (S)', 'Izin (I)', 'Alfa (A)'],
+              datasets: [{
+                label: 'Jumlah Kejadian (Siswa/Hari)',
+                data: [s, i, a],
+                backgroundColor: ['#f59e0b', '#3b82f6', '#ef4444'],
+                borderRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } }
+              }
+            }
+          });
+        }
+      },
+
+      loadPresensiMuridView: async function () {
+        app._loadPresensiCache();
+        try {
+          var liveData = await app.gasSilent('getTableData', 'Presensi');
+          if (liveData && Array.isArray(liveData) && liveData.length > 0) {
+            if (!Array.isArray(app.state.db.Presensi)) app.state.db.Presensi = [];
+            liveData.forEach(function (rec) {
+              var idx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, rec.id); });
+              if (idx > -1) app.state.db.Presensi[idx] = rec;
+              else app.state.db.Presensi.push(rec);
+            });
+            app._savePresensiCache();
+          }
+        } catch (e) { }
+
+        var mId = app.state.user ? app.state.user.muridId : '';
+        var mNisn = app.state.user ? app.state.user.nisn : '';
+        var mName = app.state.user ? app.state.user.nama : 'Murid';
+
+        if (document.getElementById('murid-presensi-name')) {
+          document.getElementById('murid-presensi-name').innerText = 'Riwayat Kehadiran: ' + mName;
+        }
+
+        var allPresensi = app.state.db.Presensi || [];
+        var myLogs = allPresensi.filter(function (p) {
+          var sid = p.siswaId || p.siswaid || '';
+          return app.compareId(sid, mId) || (mNisn && app.compareId(sid, mNisn));
+        });
+        myLogs.sort(function (a, b) { return (b.tanggal || '').localeCompare(a.tanggal || ''); });
+
+        var h = 0, s = 0, i = 0, a = 0;
+        myLogs.forEach(function (p) {
+          if (p.status === 'H') h++;
+          if (p.status === 'S') s++;
+          if (p.status === 'I') i++;
+          if (p.status === 'A') a++;
+        });
+
+        var total = myLogs.length;
+        var rate = total > 0 ? ((h / total) * 100).toFixed(0) : '100';
+
+        if (document.getElementById('mp-rate')) document.getElementById('mp-rate').innerText = rate + '%';
+        if (document.getElementById('mp-h')) document.getElementById('mp-h').innerText = h + ' Hari';
+        if (document.getElementById('mp-s')) document.getElementById('mp-s').innerText = s + ' Hari';
+        if (document.getElementById('mp-i')) document.getElementById('mp-i').innerText = i + ' Hari';
+        if (document.getElementById('mp-a')) document.getElementById('mp-a').innerText = a + ' Hari';
+
+        var body = document.getElementById('table-presensi-murid-body');
+        if (body) {
+          body.innerHTML = myLogs.map(function (p, idx) {
+            var stBadge = p.status === 'H' ? 'bg-emerald-100 text-emerald-800' :
+              (p.status === 'S' ? 'bg-amber-100 text-amber-800' :
+              (p.status === 'I' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'));
+            var stName = p.status === 'H' ? 'Hadir' : (p.status === 'S' ? 'Sakit' : (p.status === 'I' ? 'Izin' : 'Alfa'));
+
+            return '<tr class="border-b hover:bg-slate-50">' +
+              '<td class="p-3 text-center font-bold text-slate-500 border">' + (idx + 1) + '</td>' +
+              '<td class="p-3 border font-bold text-slate-800">' + (p.tanggal || '-') + '</td>' +
+              '<td class="p-3 text-center border"><span class="px-3 py-1 rounded-full text-xs font-bold ' + stBadge + '">' + stName + ' (' + p.status + ')</span></td>' +
+              '<td class="p-3 border text-slate-700">' + (p.keterangan || '-') + '</td>' +
+              '</tr>';
+          }).join('') || '<tr><td colspan="4" class="p-6 text-center text-slate-500">Belum ada riwayat presensi harian yang tercatat.</td></tr>';
+        }
+      },
+
+      deletePresensiSingle: async function (id) {
+        if (!confirm('Hapus entri presensi ini secara permanen?')) return;
+        try {
+          await app.gas('deleteRecord', 'Presensi', id);
+          app.state.db.Presensi = app.state.db.Presensi.filter(function (p) { return !app.compareId(p.id, id); });
+          app.toast('Entri presensi berhasil dihapus!');
+          app.loadPresensiRekapView();
+        } catch (err) {
+          alert('Gagal menghapus presensi.');
+        }
+      },
+
       // ── Navigasi ──────────────────────────────────────────────
       nav: function (section) {
         var titles = {
           identitas: 'Isi Identitas Anda',
           datamurid: 'Manajemen Data Murid',
+          presensi: 'Presensi & Rekapitulasi Murid',
           profilmurid: 'Profil Lengkap Murid',
           program: 'Program Kerja Guru Wali',
           jadwal: 'Jadwal Kegiatan',
@@ -3181,14 +4449,15 @@
 
         // Tampilkan data langsung dari memori lokal (instant)
         if (section === 'identitas') {
+          app._loadSettingsCache();
           var s = app.getParsedSettings();
-          document.getElementById('id_nama').value = app.state.user.nama || '';
-          document.getElementById('id_nip_guru').value = (s.nipGuruMap || {})[app.state.user.username] || '';
+          document.getElementById('id_nama').value = app.state.user ? (app.state.user.nama || '') : '';
+          document.getElementById('id_nip_guru').value = app.state.user ? ((s.nipGuruMap || {})[app.state.user.username] || '') : '';
           document.getElementById('id_sekolah').value = s.sekolah || '';
           document.getElementById('id_kepsek').value = s.kepsek || '';
           document.getElementById('id_nip_kepsek').value = s.nipKepsek || '';
           document.getElementById('id_kota').value = s.kota || '';
-          document.getElementById('id_tahun').value = s.tahun || '';
+          document.getElementById('id_tahun').value = s.tahun || '2026/2027';
           document.getElementById('id_semester').value = s.semester || 'Ganjil';
           document.getElementById('id_provinsi').value = s.provinsi || '';
           document.getElementById('id_dinas').value = s.dinas || '';
@@ -3208,6 +4477,7 @@
         }
 
         if (section === 'datamurid') app.loadMurid();
+        if (section === 'presensi') app.loadPresensi();
         if (section === 'program') app.loadProgram();
         if (section === 'users') app.loadUsers();
         if (section === 'jadwal') app.loadJadwal();
@@ -4422,16 +5692,34 @@
             role: document.getElementById('fu_role').value
           };
         }
+        else if (table === 'Presensi') {
+          var exP = (app.state.db.Presensi || []).find(function (x) { return app.compareId(x.id, app.state.activeEditId); });
+          if (!exP) return;
+          var st = '';
+          document.getElementsByName('fep_status').forEach(function (r) { if (r.checked) st = r.value; });
+          var ket = (st === 'I') ? (document.getElementById('fep_keterangan').value || '').trim() : '';
+
+          obj = Object.assign({}, exP, {
+            status: st,
+            keterangan: ket,
+            inputBy: app.state.user ? app.state.user.nama + ' (' + app.state.user.role + ' Revisi)' : 'Revisi Guru'
+          });
+
+          var pIdx = app.state.db.Presensi.findIndex(function (x) { return app.compareId(x.id, obj.id); });
+          if (pIdx > -1) app.state.db.Presensi[pIdx] = obj;
+          else app.state.db.Presensi.push(obj);
+          app._savePresensiCache();
+        }
 
 
         try {
-          await app.gas('saveRecord', table, obj);
-          app.toast('Data Tersimpan!');
+          await app.gasSilent('saveRecord', table, obj);
+          app.toast('Data Presensi/Record Tersimpan!');
           app.closeModal();
           // Refresh tabel yang sesuai
           var reloadMap = {
             Murid: 'loadMurid', Program: 'loadProgram', Jadwal: 'loadJadwal',
-            Jurnal: 'loadJurnal', Laporan: 'loadLaporan', Rencana: 'loadRencana', Users: 'loadUsers'
+            Jurnal: 'loadJurnal', Laporan: 'loadLaporan', Rencana: 'loadRencana', Users: 'loadUsers', Presensi: 'loadPresensiRekapView'
           };
           if (reloadMap[table]) app[reloadMap[table]]();
         } catch (err) {
@@ -4442,12 +5730,18 @@
 
       deleteData: async function (table, id) {
         if (!confirm('Hapus data ini selamanya?')) return;
+        if (table === 'Presensi') {
+          app.state.db.Presensi = (app.state.db.Presensi || []).filter(function (x) { return !app.compareId(x.id, id); });
+          app._savePresensiCache();
+          app.toast('Data Presensi Berhasil Dihapus!');
+          app.loadPresensiRekapView();
+        }
         try {
-          await app.gas('deleteRecord', table, id);
-          app.toast('Data Berhasil Dihapus!');
+          await app.gasSilent('deleteRecord', table, id);
+          if (table !== 'Presensi') app.toast('Data Berhasil Dihapus!');
           var reloadMap = {
             Murid: 'loadMurid', Program: 'loadProgram', Jadwal: 'loadJadwal',
-            Jurnal: 'loadJurnal', Laporan: 'loadLaporan', Rencana: 'loadRencana', Users: 'loadUsers'
+            Jurnal: 'loadJurnal', Laporan: 'loadLaporan', Rencana: 'loadRencana', Users: 'loadUsers', Presensi: 'loadPresensiRekapView'
           };
           if (reloadMap[table]) app[reloadMap[table]]();
         } catch (err) {
